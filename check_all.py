@@ -4,7 +4,7 @@ import hashlib
 import os
 
 md5_file = "MD5SUM.txt"
-dest_dir = "gaia_source/"
+dest_dir = "gaia_source_rv/"
 
 print("Chcecking in " + dest_dir)
 

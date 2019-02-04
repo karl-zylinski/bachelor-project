@@ -2,73 +2,91 @@ import sqlite3
 import time
 import threading
 import os
+import datetime
 
 start_time = time.time()
 dry_run = False
-dry_run_print = True
-db_name = "gaia_dr2.db"
-source_dir = "gaia_bork/"
-columns = ["solution_id","designation","source_id","random_index","ref_epoch","ra","ra_error","dec","dec_error","parallax","parallax_error","parallax_over_error","pmra","pmra_error","pmdec","pmdec_error","ra_dec_corr","ra_parallax_corr","ra_pmra_corr","ra_pmdec_corr","dec_parallax_corr","dec_pmra_corr","dec_pmdec_corr","parallax_pmra_corr","parallax_pmdec_corr","pmra_pmdec_corr","astrometric_n_obs_al","astrometric_n_obs_ac","astrometric_n_good_obs_al","astrometric_n_bad_obs_al","astrometric_gof_al","astrometric_chi2_al","astrometric_excess_noise","astrometric_excess_noise_sig","astrometric_params_solved","astrometric_primary_flag","astrometric_weight_al","astrometric_pseudo_colour","astrometric_pseudo_colour_error","mean_varpi_factor_al","astrometric_matched_observations","visibility_periods_used","astrometric_sigma5d_max","frame_rotator_object_type","matched_observations","duplicated_source","phot_g_n_obs","phot_g_mean_flux","phot_g_mean_flux_error","phot_g_mean_flux_over_error","phot_g_mean_mag","phot_bp_n_obs","phot_bp_mean_flux","phot_bp_mean_flux_error","phot_bp_mean_flux_over_error","phot_bp_mean_mag","phot_rp_n_obs","phot_rp_mean_flux","phot_rp_mean_flux_error","phot_rp_mean_flux_over_error","phot_rp_mean_mag","phot_bp_rp_excess_factor","phot_proc_mode","bp_rp","bp_g","g_rp","radial_velocity","radial_velocity_error","rv_nb_transits","rv_template_teff","rv_template_logg","rv_template_fe_h","phot_variable_flag","l","b","ecl_lon","ecl_lat","priam_flags","teff_val","teff_percentile_lower","teff_percentile_upper","a_g_val","a_g_percentile_lower","a_g_percentile_upper","e_bp_min_rp_val","e_bp_min_rp_percentile_lower","e_bp_min_rp_percentile_upper","flame_flags","radius_val","radius_percentile_lower","radius_percentile_upper","lum_val","lum_percentile_lower","lum_percentile_upper"]
-data_types = ["integer","text","integer","integer","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","integer","integer","integer","integer","real","real","real","real","integer","integer","real","real","real","real","integer","integer","real","integer","integer","integer","integer","real","real","real","real","integer","real","real","real","real","integer","real","real","real","real","real","integer","real","real","real","real","real","integer","real","real","real","text","real","real","real","real","integer","real","real","real","real","real","real","real","real","real","integer","real","real","real","real","real","real"]
-assert(len(columns) == len(data_types))
-num_cols = len(columns)
+dry_run_print = False
+db_name = datetime.datetime.now().strftime("gaia_dr2_rv_%Y-%m-%d-%H-%M-%S.db")
+source_dir = "gaia_source_rv/"
+source_columns = ["solution_id","designation","source_id","random_index","ref_epoch","ra","ra_error","dec","dec_error","parallax","parallax_error","parallax_over_error","pmra","pmra_error","pmdec","pmdec_error","ra_dec_corr","ra_parallax_corr","ra_pmra_corr","ra_pmdec_corr","dec_parallax_corr","dec_pmra_corr","dec_pmdec_corr","parallax_pmra_corr","parallax_pmdec_corr","pmra_pmdec_corr","astrometric_n_obs_al","astrometric_n_obs_ac","astrometric_n_good_obs_al","astrometric_n_bad_obs_al","astrometric_gof_al","astrometric_chi2_al","astrometric_excess_noise","astrometric_excess_noise_sig","astrometric_params_solved","astrometric_primary_flag","astrometric_weight_al","astrometric_pseudo_colour","astrometric_pseudo_colour_error","mean_varpi_factor_al","astrometric_matched_observations","visibility_periods_used","astrometric_sigma5d_max","frame_rotator_object_type","matched_observations","duplicated_source","phot_g_n_obs","phot_g_mean_flux","phot_g_mean_flux_error","phot_g_mean_flux_over_error","phot_g_mean_mag","phot_bp_n_obs","phot_bp_mean_flux","phot_bp_mean_flux_error","phot_bp_mean_flux_over_error","phot_bp_mean_mag","phot_rp_n_obs","phot_rp_mean_flux","phot_rp_mean_flux_error","phot_rp_mean_flux_over_error","phot_rp_mean_mag","phot_bp_rp_excess_factor","phot_proc_mode","bp_rp","bp_g","g_rp","radial_velocity","radial_velocity_error","rv_nb_transits","rv_template_teff","rv_template_logg","rv_template_fe_h","phot_variable_flag","l","b","ecl_lon","ecl_lat","priam_flags","teff_val","teff_percentile_lower","teff_percentile_upper","a_g_val","a_g_percentile_lower","a_g_percentile_upper","e_bp_min_rp_val","e_bp_min_rp_percentile_lower","e_bp_min_rp_percentile_upper","flame_flags","radius_val","radius_percentile_lower","radius_percentile_upper","lum_val","lum_percentile_lower","lum_percentile_upper"]
+dest_columns = ["source_id","ref_epoch","ra","ra_error","dec","dec_error","parallax","parallax_error","pmra","pmra_error","pmdec","pmdec_error", "phot_g_mean_flux","phot_g_mean_flux_error","phot_g_mean_mag","radial_velocity","radial_velocity_error"]
+dest_data_types = ["integer primary key","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real"]
+dest_source_mapping = [0] * len(dest_columns)
+dest_parallax_idx = dest_columns.index("parallax")
+
+for i, d in enumerate(dest_columns):
+    dest_source_mapping[i] = source_columns.index(d)
+
+assert(len(dest_columns) == len(dest_data_types))
 conn = sqlite3.connect(db_name)
 cursor = conn.cursor()
 
 def sql_exec(cmd):
-    if dry_run == True:
-        if dry_run_print:
-            print(cmd)
+    if dry_run_print:
+        print(cmd)
 
+    if dry_run:
         return
 
     cursor.execute(cmd)
 
-create_table_columns = "solution_id integer, designation text, source_id integer primary key"
+create_table_columns = ""
 
-for i in range(3, len(columns)): # Skip 3 first since we have those above (due to primary key)
-    col_title = columns[i]
-    col_item = ","
-    col_data_type = data_types[i]
-    col_item += col_title + " " + col_data_type
-    create_table_columns += col_item
+for i in range(0, len(dest_columns)):
+    col_title = dest_columns[i]
+    col_data_type = dest_data_types[i]
+    create_table_columns += col_title + " " + col_data_type + ","
 
+# add extra columns not in gaia source
+extra_columns = ["distance"]
+extra_coumns_data_type = ["real"]
+distance_col_idx = len(dest_columns)
+
+for i in range(0, len(extra_columns)):
+    col_title = extra_columns[i]
+    col_data_type = extra_coumns_data_type[i]
+    create_table_columns += col_title + " " + col_data_type + ","
+
+all_columns = dest_columns + extra_columns
+all_columns_text = ",".join(all_columns)
+
+create_table_columns = create_table_columns[:-1]
 sql_exec("CREATE TABLE gaia (" + create_table_columns + ")")
 
 def import_file(file):
     csv_fh = open(source_dir + file, "r")
     csv_lines = csv_fh.readlines()
     csv_fh.close()
-    insert_str = "INSERT INTO gaia (" + ",".join(columns) + ") VALUES"
-
+    inserts = 0
     for i in range(1, len(csv_lines)): # skip header line
         csv_line = csv_lines[i]
 
-        if (csv_line.count(",") + 1) != num_cols:
-            print("In " + file + ": Skipping line " + str(i + 1) + ", not " + str(num_cols) + " cells long")
+        if (csv_line.count(",") + 1) != len(source_columns):
+            print("In " + file + ": Skipping line " + str(i + 1) + ", not " + str(len(source_columns)) + " cells long")
             continue
 
         values = csv_line.split(",")
-        for i, val in enumerate(values):
-            dt = data_types[i]
 
-            if val[-1:] == "\n":
-                val = val[:-1]
-                values[i] = val
+        # skip those w/o parallax
+        if (values[dest_source_mapping[dest_parallax_idx]] == ""):
+            continue
 
-            if val == "":
-                values[i] = "null"
-            elif dt == "integer" and val == "true":
-                values[i] = "1"
-            elif dt == "integer" and val == "false":
-                values[i] = "0"
-            elif dt == "text":
-                values[i] = "\"" + val + "\""
+        dest_values = [None] * len(all_columns)
 
-        insert_str += " (" + ",".join(values) + "),"
+        for ci in range(0, len(dest_columns)):
+            dest_values[ci] = values[dest_source_mapping[ci]]
 
-    insert_str = insert_str[:-1] # Remove last comma
-    sql_exec(insert_str)
+        # distance from parallax, parallax in mArcSec, hence conversion
+        dest_values[distance_col_idx] = str(1.0/(float(dest_values[dest_parallax_idx])/1000.0))
+
+        insert_str = "INSERT INTO gaia (" + all_columns_text + ") VALUES (" + ",".join(dest_values) + ")"
+        sql_exec(insert_str)
+        inserts = inserts + 1
+
+        if inserts % 1000 == 0:
+            conn.commit()
+
     conn.commit()
     print("Imported: " + file)
 
@@ -82,6 +100,10 @@ print("Creating indices")
 sql_exec("CREATE INDEX index_ra ON gaia (ra)")
 sql_exec("CREATE INDEX index_dec ON gaia (dec)")
 sql_exec("CREATE INDEX index_parallax ON gaia (parallax)")
+sql_exec("CREATE INDEX index_pmra ON gaia (pmra)")
+sql_exec("CREATE INDEX index_pmdec ON gaia (pmdec)")
+sql_exec("CREATE INDEX index_radial_velocity ON gaia (radial_velocity)")
+sql_exec("CREATE INDEX index_distance ON gaia (distance)")
 conn.close()
 end_time = time.time()
 dt = end_time - start_time

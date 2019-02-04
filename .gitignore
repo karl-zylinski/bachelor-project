@@ -1,3 +1,6 @@
 gaia_source/
 gaia_bork/
-gaia_dr2.db
+gaia_source_rv/
+gaia_bork_rv/
+*.db
+*.db-journal

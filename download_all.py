@@ -3,9 +3,9 @@ import threading
 import time
 import os
 
-source_repo = "http://cdn.gea.esac.esa.int/Gaia/gdr2/gaia_source/csv/"
+source_repo = "http://cdn.gea.esac.esa.int/Gaia/gdr2/gaia_source_with_rv/csv/"
 md5_file = "MD5SUM.txt"
-dest_dir = "gaia_source/"
+dest_dir = "gaia_source_rv/"
 
 if not os.path.exists(dest_dir):
     os.makedirs(dest_dir)
