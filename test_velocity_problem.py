@@ -3,8 +3,8 @@ import math
 deg_to_rad = math.pi/180
 rad_to_deg = 180/math.pi
 mas_to_deg = 1.0/3600000.0
-mas_per_yr_to_rad_per_yr = mas_to_deg*deg_to_rad
-km_per_s_to_km_per_year = 365.25 * 24 * 3600
+year_to_sec = 365.25 * 24 * 3600
+mas_per_yr_to_rad_per_s = (mas_to_deg*deg_to_rad)/year_to_sec
 
 def vec3_len(v):
     return math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
@@ -23,8 +23,8 @@ def vec3_from_celestial(ra, dec, r):
             r * math.sin(ra_rad) * math.cos(dec_rad), # sin(ra_rad) * sin(pi/2 - dec_rad)
             r * math.sin(dec_rad)] # cos(pi/2 - dec_rad)
 
-v1 = vec3_from_celestial(1.36507123552316 * mas_per_yr_to_rad_per_yr, -35.42565811921144 * mas_per_yr_to_rad_per_yr, 2.2865597589737625 * km_per_s_to_km_per_year)
-v2 = vec3_from_celestial(-14.163755619154164 * mas_per_yr_to_rad_per_yr, 7.36195070236888 * mas_per_yr_to_rad_per_yr, 12.184076848031015 * km_per_s_to_km_per_year)
+v1 = vec3_from_celestial(-7.198384969540815 * mas_per_yr_to_rad_per_s, -16.44667141905734 * mas_per_yr_to_rad_per_s, 42.2501431483888)
+v2 = vec3_from_celestial(29.540255494580656 * mas_per_yr_to_rad_per_s, -30.7994721695402 * mas_per_yr_to_rad_per_s, 33.39671721859703)
 print(v1)
 print(v2)
 print("")
