@@ -2,5 +2,6 @@ gaia_source/
 gaia_bork/
 gaia_source_rv/
 gaia_bork_rv/
+found-pairs-*
 *.db
 *.db-journal
