@@ -19,8 +19,8 @@ i_radial_velocity = 6
 i_distance = 7
 i_phot_g_mean_mag = 8
 
-conn = sqlite3.connect(db_name)
-c = conn.cursor()
+c = sqlite3.connect(db_name)
+c.execute('pragma mmap_size=8589934592;')
 
 deg_to_rad = math.pi/180
 rad_to_deg = 180/math.pi
@@ -132,7 +132,7 @@ for s in all_stars:
     print(nearby_stars_similar_velocity[0])
     print(nearby_stars_similar_velocity[1])
     print("")
-conn.close()
+c.close()
 
 output_name = datetime.datetime.now().strftime("found-pairs-%Y-%m-%d-%H-%M-%S.txt")
 file = open(output_name,"w")

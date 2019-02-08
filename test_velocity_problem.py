@@ -12,6 +12,9 @@ def vec3_len(v):
 def vec3_dot(v1, v2):
     return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
 
+def vec3_sub(v1, v2):
+    return [v1[0]-v2[0], v1[1]-v2[1], v1[2]*v2[2]]
+
 def vec3_scale(v, s):
     return [v[0] * s, v[1] * s, v[2] * s]
 
@@ -27,12 +30,14 @@ v1 = vec3_from_celestial(-7.198384969540815 * mas_per_yr_to_rad_per_s, -16.44667
 v2 = vec3_from_celestial(29.540255494580656 * mas_per_yr_to_rad_per_s, -30.7994721695402 * mas_per_yr_to_rad_per_s, 33.39671721859703)
 print(v1)
 print(v2)
+print(vec3_len(vec3_sub(v1,v2)))
 print("")
 
 s1 = vec3_len(v1)
 s2 = vec3_len(v2)
 print(s1)
 print(s2)
+print(s1 - s2)
 print("")
 
 vdir1 = vec3_scale(v1, 1/s1)
