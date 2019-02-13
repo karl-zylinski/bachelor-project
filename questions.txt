@@ -4,3 +4,11 @@ When importing (from partial source with 1000 of 62000 csvs):
 Skipped 5734839 because they lacked parallax"
 
 Is it reasonable to cut out the ones that miss parallax? Seems to be 25% (5734839/21377664 = 0.268).
+
+-------------
+
+Comoving star in Gaia DR1 article says interesting things on cutting away parallax S/N ratio under a certain limit. Use this? Precomputed in dr2, could filter on it upon initial import
+
+------------
+
+Also: See diary TODO
