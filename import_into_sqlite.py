@@ -7,7 +7,7 @@ import datetime
 start_time = time.time()
 dry_run = False
 dry_run_print = False
-db_name = datetime.datetime.now().strftime("gaia_dr2_%Y-%m-%d-%H-%M-%S.db")
+db_name = datetime.datetime.now().strftime("gaia_dr2_partial_%Y-%m-%d-%H-%M-%S.db")
 source_dir = "gaia_source_partial/"
 source_columns = ["solution_id","designation","source_id","random_index","ref_epoch","ra","ra_error","dec","dec_error","parallax","parallax_error","parallax_over_error","pmra","pmra_error","pmdec","pmdec_error","ra_dec_corr","ra_parallax_corr","ra_pmra_corr","ra_pmdec_corr","dec_parallax_corr","dec_pmra_corr","dec_pmdec_corr","parallax_pmra_corr","parallax_pmdec_corr","pmra_pmdec_corr","astrometric_n_obs_al","astrometric_n_obs_ac","astrometric_n_good_obs_al","astrometric_n_bad_obs_al","astrometric_gof_al","astrometric_chi2_al","astrometric_excess_noise","astrometric_excess_noise_sig","astrometric_params_solved","astrometric_primary_flag","astrometric_weight_al","astrometric_pseudo_colour","astrometric_pseudo_colour_error","mean_varpi_factor_al","astrometric_matched_observations","visibility_periods_used","astrometric_sigma5d_max","frame_rotator_object_type","matched_observations","duplicated_source","phot_g_n_obs","phot_g_mean_flux","phot_g_mean_flux_error","phot_g_mean_flux_over_error","phot_g_mean_mag","phot_bp_n_obs","phot_bp_mean_flux","phot_bp_mean_flux_error","phot_bp_mean_flux_over_error","phot_bp_mean_mag","phot_rp_n_obs","phot_rp_mean_flux","phot_rp_mean_flux_error","phot_rp_mean_flux_over_error","phot_rp_mean_mag","phot_bp_rp_excess_factor","phot_proc_mode","bp_rp","bp_g","g_rp","radial_velocity","radial_velocity_error","rv_nb_transits","rv_template_teff","rv_template_logg","rv_template_fe_h","phot_variable_flag","l","b","ecl_lon","ecl_lat","priam_flags","teff_val","teff_percentile_lower","teff_percentile_upper","a_g_val","a_g_percentile_lower","a_g_percentile_upper","e_bp_min_rp_val","e_bp_min_rp_percentile_lower","e_bp_min_rp_percentile_upper","flame_flags","radius_val","radius_percentile_lower","radius_percentile_upper","lum_val","lum_percentile_lower","lum_percentile_upper"]
 dest_columns = ["source_id","ref_epoch","ra","ra_error","dec","dec_error","parallax","parallax_error","pmra","pmra_error","pmdec","pmdec_error", "phot_g_mean_flux","phot_g_mean_flux_error","phot_g_mean_mag","radial_velocity","radial_velocity_error"]
@@ -58,11 +58,13 @@ total_counter = 0
 invalid_lines = 0
 no_parallax_skipped = 0
 commit_counter = 0
+file_counter = 0
 def import_file(file):
     global commit_counter
     global no_parallax_skipped
     global invalid_lines
     global total_counter
+    global file_counter
     csv_fh = open(source_dir + file, "r")
     csv_lines = csv_fh.readlines()
     csv_fh.close()
@@ -105,7 +107,8 @@ def import_file(file):
         commit_counter = 0
         conn.commit()
 
-    print("Imported: %s (%d done)" % (file, total_counter))
+    file_counter = file_counter + 1
+    print("Imported: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))
 
 conn.commit()
 
@@ -115,13 +118,19 @@ for file in os.listdir(source_dir):
 
     import_file(file)
 
-print("Creating indices")
+print("Creating index on ra")
 sql_exec("CREATE INDEX index_ra ON gaia (ra)")
+print("Creating index on dec")
 sql_exec("CREATE INDEX index_dec ON gaia (dec)")
+print("Creating index on parallax")
 sql_exec("CREATE INDEX index_parallax ON gaia (parallax)")
+print("Creating index on pmra")
 sql_exec("CREATE INDEX index_pmra ON gaia (pmra)")
+print("Creating index on pmdec")
 sql_exec("CREATE INDEX index_pmdec ON gaia (pmdec)")
+print("Creating index on radial_velocity")
 sql_exec("CREATE INDEX index_radial_velocity ON gaia (radial_velocity)")
+print("Creating index on distance")
 sql_exec("CREATE INDEX index_distance ON gaia (distance)")
 conn.commit()
 conn.close()

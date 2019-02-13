@@ -1,0 +1,6 @@
+When importing (from partial source with 1000 of 62000 csvs):
+
+"Imported 21377664 stars
+Skipped 5734839 because they lacked parallax"
+
+Is it reasonable to cut out the ones that miss parallax? Seems to be 25% (5734839/21377664 = 0.268).
