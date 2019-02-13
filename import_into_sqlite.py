@@ -55,9 +55,13 @@ create_table_columns = create_table_columns[:-1]
 sql_exec("CREATE TABLE gaia (" + create_table_columns + ")")
 
 total_counter = 0
+invalid_lines = 0
+no_parallax_skipped = 0
 commit_counter = 0
 def import_file(file):
     global commit_counter
+    global no_parallax_skipped
+    global invalid_lines
     global total_counter
     csv_fh = open(source_dir + file, "r")
     csv_lines = csv_fh.readlines()
@@ -65,7 +69,9 @@ def import_file(file):
     for i in range(1, len(csv_lines)): # skip header line
         csv_line = csv_lines[i]
 
+        # sanity check
         if (csv_line.count(",") + 1) != len(source_columns):
+            invalid_lines = invalid_lines + 1
             print("In " + file + ": Skipping line " + str(i + 1) + ", not " + str(len(source_columns)) + " cells long")
             continue
 
@@ -73,10 +79,12 @@ def import_file(file):
 
         # skip those w/o parallax
         if (values[dest_source_mapping[dest_parallax_idx]] == ""):
+            no_parallax_skipped = no_parallax_skipped + 1
             continue
 
         dest_values = [None] * len(all_columns)
 
+        # throws in all columns that we take from Gaia as-is (compared to distance, calculated below)
         for ci in range(0, len(dest_columns)):
             val = values[dest_source_mapping[ci]]
             if val == "":
@@ -84,7 +92,7 @@ def import_file(file):
             else:
                 dest_values[ci] = val
 
-        # distance from parallax, parallax in mArcSec, hence conversion
+        # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
         dest_values[distance_col_idx] = str(1.0/(float(dest_values[dest_parallax_idx])/1000.0))
 
         insert_str = "INSERT INTO gaia (" + all_columns_text + ") VALUES (" + ",".join(dest_values) + ")"
@@ -92,6 +100,7 @@ def import_file(file):
         total_counter = total_counter + 1
         commit_counter = commit_counter + 1
 
+    # relaxes harddrive
     if commit_counter > 100000:
         commit_counter = 0
         conn.commit()
@@ -118,4 +127,8 @@ conn.commit()
 conn.close()
 end_time = time.time()
 dt = end_time - start_time
+print()
+print("Imported %d stars" % total_counter)
+print("Skipped %d because they lacked parallax" % no_parallax_skipped)
+print("Skipped %d because csv line was of wrong length (%d)" % (invalid_lines, len(source_columns)))
 print("Finished in " + str(int(dt)) + " seconds")

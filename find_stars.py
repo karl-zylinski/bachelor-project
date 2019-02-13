@@ -2,7 +2,7 @@ import sqlite3
 import math
 import datetime
 
-db_name = "gaia_dr2_rv.db"
+db_name = "gaia_dr2_2019-02-08-21-46-12.db"
 max_sep = 1 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
 max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km/s
