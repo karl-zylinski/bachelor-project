@@ -2,7 +2,7 @@ import sqlite3
 import math
 import datetime
 
-db_name = "gaia_dr2_partial_2019-02-13-20-22-28.db"
+db_name = "gaia_dr2_2019-02-08-21-46-12.db"
 max_sep = 1 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
 max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km/s
@@ -27,24 +27,7 @@ rad_to_deg = 180/math.pi
 year_to_sec = 365.25 * 24 * 3600
 mas_to_deg = 1.0/3600000.0
 mas_per_yr_to_rad_per_s = (mas_to_deg*deg_to_rad)/year_to_sec
-
-def vec3_len(v):
-    return math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
-
-def vec3_dot(v1, v2):
-    return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
-
-def vec3_scale(v, s):
-    return [v[0] * s, v[1] * s, v[2] * s]
-
-# converts celestial vector to cartesian (ra and dec in degrees)
-def vec3_from_celestial(ra, dec, r):
-    ra_rad = ra * deg_to_rad
-    dec_rad = dec * deg_to_rad
-    return [r * math.cos(ra_rad) * math.cos(dec_rad), # cos(ra_rad) * sin(pi/2 - dec_rad)
-            r * math.sin(ra_rad) * math.cos(dec_rad), # sin(ra_rad) * sin(pi/2 - dec_rad)
-            r * math.sin(dec_rad)] # cos(pi/2 - dec_rad)
-
+parsec_to_km = 3.08567758 * math.pow(10, 13)
 
 # ACTUAL SCRIPT STARTS HERE
 
@@ -53,8 +36,12 @@ star_sid_to_pair_idx = {} # maps star source_id to comoving_pairs index, for che
 
 # will need to slice this up when doing full dr2 search
 all_stars = c.execute("SELECT %s FROM gaia" % columns_to_fetch).fetchall() 
+counter = 0
+total_stars = len(all_stars)
 
 for s in all_stars:
+    counter = counter + 1
+    done_str = "%s done of %s" % (counter, total_stars)
     sid = s[i_source_id]
     ra = s[i_ra] # deg
     dec = s[i_dec] # deg
@@ -69,6 +56,14 @@ for s in all_stars:
     min_dec = dec - (max_sep*rad_to_deg)/d
     max_dec = dec + (max_sep*rad_to_deg)/d
 
+    # this is a mas/yr value that corresponds to angular value for tangential speed max_vel_mag_diff/2 for this star
+    ang_vel_diff = (max_vel_mag_diff/2) / (parsec_to_km * d * mas_per_yr_to_rad_per_s)
+
+    pmra_ang_vel_min = pmra - ang_vel_diff
+    pmra_ang_vel_max = pmra + ang_vel_diff
+    pmdec_ang_vel_min = pmdec - ang_vel_diff
+    pmdec_ang_vel_max = pmdec + ang_vel_diff
+
     # this is far from perfect, it just "boxes" in stars near the current, ie not a real distance check
     # but it's fast due to indexed database columns
     find_nearby_query = '''
@@ -77,44 +72,24 @@ for s in all_stars:
         WHERE source_id IS NOT %d
         AND distance > %f AND distance < %f
         AND ra > %f AND ra < %f
-        AND dec > %f AND dec < %f''' % (sid, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
+        AND dec > %f AND dec < %f
+        AND pmra > %f AND pmra < %f
+        AND pmdec > %f AND pmdec < %f''' % (sid, min_d, max_d, min_ra, max_ra, min_dec, max_dec, pmra_ang_vel_min, pmra_ang_vel_max, pmdec_ang_vel_min, pmdec_ang_vel_max)
 
-    nearby_stars = c.execute(find_nearby_query).fetchall()
+    nearby_stars_similar_pm = c.execute(find_nearby_query).fetchall()
 
-    if len(nearby_stars) == 0:
+    if len(nearby_stars_similar_pm) == 0:
         continue
-
-    # now we want to compare velocity direction and magnitude with each found nearby star
-    # all proper motions are converted into rad/s and celestial velocity is converted to
-    # cartesian vector with unit km/s
-    pmra_rad_per_s = pmra * mas_per_yr_to_rad_per_s
-    pmdec_rad_per_s = pmdec * mas_per_yr_to_rad_per_s
-    vel = vec3_from_celestial(pmra_rad_per_s, pmdec_rad_per_s, vrad) # km/s
-    speed = vec3_len(vel)
-    vel_dir = vec3_scale(vel, 1/speed)
-    nearby_stars_similar_velocity = []
-    for ns in nearby_stars:
-        ns_pmra_rad_per_s = ns[i_pmra] * mas_per_yr_to_rad_per_s
-        ns_pmdec_rad_per_s = ns[i_pmdec] * mas_per_yr_to_rad_per_s
-        ns_vrad = ns[i_radial_velocity] #km/s
-        ns_vel = vec3_from_celestial(ns_pmra_rad_per_s, ns_pmdec_rad_per_s, ns_vrad) # km/s
-        ns_speed = vec3_len(ns_vel)
-        ns_vel_dir = vec3_scale(ns_vel, 1/ns_speed)
-        s_ns_dot = vec3_dot(ns_vel_dir, vel_dir)
-        s_ns_angle = math.acos(s_ns_dot)
-        
-        # only keep stars within velocity angle separation limit and below speed limit
-        if (s_ns_angle * rad_to_deg) < max_vel_angle_diff and math.fabs(ns_speed - speed) < max_vel_mag_diff:
-            nearby_stars_similar_velocity.append(ns)
 
     # dont care about non-binary systems for now
-    if len(nearby_stars_similar_velocity) != 1:
+    if len(nearby_stars_similar_pm) != 1:
+        print("(%s) Skipping non-binary (%d):" % (done_str, len(nearby_stars_similar_pm)))
         continue
 
-    nearby_stars_similar_velocity.append(s)
-    # nearby_stars_similar_velocity should always be length 2 at this point, i.e we only look after pairs
-    s1 = nearby_stars_similar_velocity[0]
-    s2 = nearby_stars_similar_velocity[1]
+    nearby_stars_similar_pm.append(s)
+    # nearby_stars_similar_pm should always be length 2 at this point, i.e we only look after pairs
+    s1 = nearby_stars_similar_pm[0]
+    s2 = nearby_stars_similar_pm[1]
     sid1 = s1[i_source_id]
     sid2 = s2[i_source_id]
     pair_idx1 = star_sid_to_pair_idx.get(sid1)
@@ -129,12 +104,13 @@ for s in all_stars:
     star_sid_to_pair_idx[sid1] = new_idx
     star_sid_to_pair_idx[sid2] = new_idx
 
-    print(nearby_stars_similar_velocity[0])
-    print(nearby_stars_similar_velocity[1])
+    print("(%s) found neighbours:" % done_str)
+    print(nearby_stars_similar_pm[0])
+    print(nearby_stars_similar_pm[1])
     print("")
 c.close()
 
-output_name = datetime.datetime.now().strftime("found-pairs-%Y-%m-%d-%H-%M-%S.txt")
+output_name = datetime.datetime.now().strftime("found-pairs-from-" + db_name + "-%Y-%m-%d-%H-%M-%S.txt")
 file = open(output_name,"w")
 file.write(str(comoving_pairs))
 file.close()
