@@ -4,5 +4,6 @@ gaia_source_partial/
 gaia_source_rv/
 gaia_bork_rv/
 found-pairs-*
+query-result-*
 *.db
 *.db-journal
