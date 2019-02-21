@@ -7,3 +7,4 @@ found-pairs-*
 query-result-*
 *.db
 *.db-journal
+.vs/
