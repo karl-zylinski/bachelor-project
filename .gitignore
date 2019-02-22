@@ -8,3 +8,4 @@ query-result-*
 *.db
 *.db-journal
 .vs/
+*.raw_db

@@ -1,12 +1,13 @@
-import sqlite3
 import time
-import threading
 import os
 import datetime
 
 min_dist = 0
-max_dist = 10000
+max_dist = 3000
+stars_per_raw_db_file = 500000
 start_time = time.time()
+db_folder = datetime.datetime.now().strftime("db_gaia_dr2_rv_%Y-%m-%d-%H-%M-%S")
+
 source_dir = "gaia_source_rv/"
 source_columns = ["solution_id","designation","source_id","random_index","ref_epoch","ra","ra_error","dec","dec_error","parallax","parallax_error","parallax_over_error","pmra","pmra_error","pmdec","pmdec_error","ra_dec_corr","ra_parallax_corr","ra_pmra_corr","ra_pmdec_corr","dec_parallax_corr","dec_pmra_corr","dec_pmdec_corr","parallax_pmra_corr","parallax_pmdec_corr","pmra_pmdec_corr","astrometric_n_obs_al","astrometric_n_obs_ac","astrometric_n_good_obs_al","astrometric_n_bad_obs_al","astrometric_gof_al","astrometric_chi2_al","astrometric_excess_noise","astrometric_excess_noise_sig","astrometric_params_solved","astrometric_primary_flag","astrometric_weight_al","astrometric_pseudo_colour","astrometric_pseudo_colour_error","mean_varpi_factor_al","astrometric_matched_observations","visibility_periods_used","astrometric_sigma5d_max","frame_rotator_object_type","matched_observations","duplicated_source","phot_g_n_obs","phot_g_mean_flux","phot_g_mean_flux_error","phot_g_mean_flux_over_error","phot_g_mean_mag","phot_bp_n_obs","phot_bp_mean_flux","phot_bp_mean_flux_error","phot_bp_mean_flux_over_error","phot_bp_mean_mag","phot_rp_n_obs","phot_rp_mean_flux","phot_rp_mean_flux_error","phot_rp_mean_flux_over_error","phot_rp_mean_mag","phot_bp_rp_excess_factor","phot_proc_mode","bp_rp","bp_g","g_rp","radial_velocity","radial_velocity_error","rv_nb_transits","rv_template_teff","rv_template_logg","rv_template_fe_h","phot_variable_flag","l","b","ecl_lon","ecl_lat","priam_flags","teff_val","teff_percentile_lower","teff_percentile_upper","a_g_val","a_g_percentile_lower","a_g_percentile_upper","e_bp_min_rp_val","e_bp_min_rp_percentile_lower","e_bp_min_rp_percentile_upper","flame_flags","radius_val","radius_percentile_lower","radius_percentile_upper","lum_val","lum_percentile_lower","lum_percentile_upper"]
 dest_columns = ["source_id","ref_epoch","ra","ra_error","dec","dec_error","parallax","parallax_error","pmra","pmra_error","pmdec","pmdec_error", "phot_g_mean_flux","phot_g_mean_flux_error","phot_g_mean_mag","phot_rp_mean_mag","phot_bp_mean_mag","radial_velocity","radial_velocity_error"]
@@ -14,12 +15,19 @@ dest_data_types = ["integer primary key","real","real","real","real","real","rea
 dest_source_mapping = [0] * len(dest_columns)
 dest_parallax_idx = dest_columns.index("parallax")
 
+def error(msg):
+    print(msg)
+    exit(1)
+
+if os.path.isdir(db_folder):
+    error("Folder already exists: %s" % db_folder)
+
+os.mkdir(db_folder)
+
 for i, d in enumerate(dest_columns):
     dest_source_mapping[i] = source_columns.index(d)
 
 assert(len(dest_columns) == len(dest_data_types))
-#conn = sqlite3.connect(db_name)
-#conn.execute('pragma mmap_size=8589934592;')
 
 def sql_exec(cmd):
     if dry_run_print:
@@ -50,7 +58,6 @@ for i in range(0, len(extra_columns)):
 all_columns = dest_columns + extra_columns
 all_columns_text = ",".join(all_columns) # for query
 create_table_columns = create_table_columns[:-1] # skip last comma
-#sql_exec("CREATE TABLE gaia (" + create_table_columns + ")")
 
 i_dec = all_columns.index("dec")
 i_ra = all_columns.index("ra")
@@ -60,27 +67,38 @@ num_distance_cells = max_dist - min_dist
 num_ra_cells = 360
 num_dec_cells = 180
 
-# ordered first by dec, then by ra and then by distance
-databases = [[[None] * num_distance_cells]*num_ra_cells]*num_dec_cells
+grid = {}
 
-def write_star(ra, dec, distance, data):
-    # just take integer versions for grid
-    ira = int(ra)
-    idec = int(dec)
-    idist = int(distance)
+stars_in_cur_raw_db = 0
+raw_db_num = 0
+def write_star(idec_180, ira, idist, data):
+    global stars_in_cur_raw_db
+    global raw_db_num
+    global grid
 
-    print(ira)
-    print(idec)
-    print(idist)
-    print(databases[idec][ira][idist])
+    cell_id = "%d-%d-%d" % (idec_180, ira, idist)
+    cell = grid.get(cell_id)
 
-    #insert_str = "INSERT INTO gaia (" + all_columns_text + ") VALUES (" + ",".join(dest_values) + ")"
-    #sql_exec(insert_str)
+    if cell == None:
+        cell = []
+        grid[cell_id] = cell
 
-total_counter = 0
+    stars_in_cur_raw_db = stars_in_cur_raw_db + 1
+    cell.append(data)
+
+    if stars_in_cur_raw_db > stars_per_raw_db_file:
+        raw_db_name = "%s/raw_db_%d.raw_db" % (db_folder, raw_db_num)
+        print("Saving raw database %d to %s" % (raw_db_num, raw_db_name))
+        f = open(raw_db_name, 'w')
+        f.write(str(grid))
+        f.close()
+        grid = {}
+        raw_db_num = raw_db_num + 1
+        stars_in_cur_raw_db = 0
+
 invalid_lines = 0
 no_parallax_skipped = 0
-commit_counter = 0
+total_counter = 0
 file_counter = 0
 for file in os.listdir(source_dir):
     if not file.endswith(".csv"):
@@ -127,21 +145,19 @@ for file in os.listdir(source_dir):
         ra = float(dest_values[i_ra])
         dec = float(dest_values[i_dec])
 
-        write_star(ra, dec, distance, dest_values)
+        ira = int(ra)
+        idec_180 = int(dec + 90) # gonna use as index, must be in 0 -  180 range
+        idist = int(distance)
+
+        write_star(idec_180, ira, idist, dest_values)
         total_counter = total_counter + 1
-        commit_counter = commit_counter + 1
-
-    # relaxes harddrive
-    if commit_counter > 100000:
-        commit_counter = 0
-        conn.commit()
-
+    
     file_counter = file_counter + 1
-    print("Imported: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))
+    print("Written to grid for csv: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))
 
 end_time = time.time()
-dt = end_time - start_timeprint()
-print("Imported %d stars" % total_counter)
+dt = end_time - start_time
+print("Imported %d stars to raw cell table" % total_counter)
 print("Skipped %d because they lacked parallax" % no_parallax_skipped)
 print("Skipped %d because csv line was of wrong length (%d)" % (invalid_lines, len(source_columns)))
 print("Finished in " + str(int(dt)) + " seconds")
