@@ -2,9 +2,10 @@ import time
 import os
 import datetime
 import pickle
+import math
 
-min_dist = 0
 max_dist = 3000
+pc_per_cell = 100
 stars_per_raw_db_file = 500000
 start_time = time.time()
 db_folder = datetime.datetime.now().strftime("db_gaia_dr2_rv_%Y-%m-%d-%H-%M-%S")
@@ -59,38 +60,32 @@ i_dec = all_columns.index("dec")
 i_ra = all_columns.index("ra")
 i_distance = all_columns.index("distance")
 
-num_distance_cells = max_dist - min_dist
-num_ra_cells = 360
-num_dec_cells = 180
+deg_to_rad = math.pi/180
+def vec3_from_celestial(ra, dec, r):
+    ra_rad = ra * deg_to_rad
+    dec_rad = dec * deg_to_rad
+    return [r * math.cos(ra_rad) * math.cos(dec_rad), # cos(ra_rad) * sin(pi/2 - dec_rad)
+            r * math.sin(ra_rad) * math.cos(dec_rad), # sin(ra_rad) * sin(pi/2 - dec_rad)
+            r * math.sin(dec_rad)]
 
 grid = {}
 
-stars_in_cur_raw_db = 0
-raw_db_num = 0
-def write_star(idec_180, ira, idist, data):
-    global stars_in_cur_raw_db
-    global raw_db_num
+def write_star(ra, dec, dist, data):
     global grid
+    pos = vec3_from_celestial(ra, dec, dist)
 
-    cell_id = "%d-%d-%d" % (idec_180, ira, idist)
+    xi = int(pos[0]/pc_per_cell)
+    yi = int(pos[1]/pc_per_cell)
+    zi = int(pos[2]/pc_per_cell)
+
+    cell_id = "x%dy%dz%d" % (xi, yi, zi)
     cell = grid.get(cell_id)
 
     if cell == None:
         cell = []
         grid[cell_id] = cell
 
-    stars_in_cur_raw_db = stars_in_cur_raw_db + 1
     cell.append(data)
-
-    if stars_in_cur_raw_db > stars_per_raw_db_file:
-        raw_db_name = "%s/raw_db_%d.raw_db" % (db_folder, raw_db_num)
-        print("Saving raw database %d to %s" % (raw_db_num, raw_db_name))
-        f = open(raw_db_name, 'wb')
-        pickle.dump(grid, f)
-        f.close()
-        grid = {}
-        raw_db_num = raw_db_num + 1
-        stars_in_cur_raw_db = 0
 
 invalid_lines = 0
 no_parallax_skipped = 0
@@ -133,23 +128,25 @@ for file in os.listdir(source_dir):
         # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
         distance = 1.0/(float(dest_values[dest_parallax_idx])/1000.0)
 
-        if distance < min_dist or distance > max_dist:
+        if distance < 0 or distance > max_dist:
             continue
 
         dest_values[distance_col_idx] = str(distance)
-
         ra = float(dest_values[i_ra])
         dec = float(dest_values[i_dec])
 
-        ira = int(ra)
-        idec_180 = int(dec + 90) # gonna use as index, must be in 0 -  180 range
-        idist = int(distance)
-
-        write_star(idec_180, ira, idist, dest_values)
+        write_star(ra, dec, distance, dest_values)
         total_counter = total_counter + 1
     
     file_counter = file_counter + 1
     print("Written to grid for csv: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))
+
+
+raw_db_name = "%s/raw_db.raw_db" % (db_folder)
+print("Saving raw database to %s" % (raw_db_name))
+f = open(raw_db_name, 'wb')
+pickle.dump(grid, f)
+f.close()
 
 end_time = time.time()
 dt = end_time - start_time
