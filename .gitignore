@@ -9,3 +9,5 @@ query-result-*
 *.db-journal
 .vs/
 *.raw_db
+columns
+columns_data_types

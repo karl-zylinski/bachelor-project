@@ -2,16 +2,37 @@ import time
 import os
 import datetime
 import sqlite3
+import pickle
 
-db_folder = "db_gaia_dr2_rv_2019-02-22-15-21-18"
+db_folder = "db_gaia_dr2_rv_2019-02-22-16-04-10"
 start_time = time.time()
+
+columns_fh = open("%s/columns" % db_folder, "r")
+columns = eval(columns_fh.read())
+columns_fh.close()
+
+columns_data_types_fh = open("%s/columns_data_types" % db_folder, "r")
+columns_data_types = eval(columns_data_types_fh.read())
+columns_data_types_fh.close()
+
+assert(len(columns) == len(columns_data_types))
+
+create_table_columns = ""
+
+for i in range(0, len(columns)):
+    col_title = columns[i]
+    col_data_type = columns[i]
+    create_table_columns += col_title + " " + col_data_type + ","
+
+create_table_columns = create_table_columns[:-1]
+insert_into_table_columns = ",".join(columns)
 
 for file in os.listdir(db_folder):
     if not file.endswith(".raw_db"):
         continue
 
-    grid_fh = open("%s/%s" % (db_folder, file), 'r')
-    grid = eval(grid_fh.read())
+    grid_fh = open("%s/%s" % (db_folder, file), 'rb')
+    grid = pickle.load(grid_fh)
     grid_fh.close()
 
     for db_name, stars in grid.items():
@@ -19,12 +40,11 @@ for file in os.listdir(db_folder):
         print("Writing cell database: %s" % cell_db)
         conn = sqlite3.connect(cell_db)
         c = conn.cursor()
-        c.execute('pragma mmap_size=4000000000;')
         c.execute("CREATE TABLE gaia (" + create_table_columns + ")")
 
         insert_counter = 0
         for star_data in stars:
-            c.execute("INSERT INTO gaia (" + all_columns_text + ") VALUES (" + ",".join(star_data) + ")")
+            c.execute("INSERT INTO gaia (" + insert_into_table_columns + ") VALUES (" + ",".join(star_data) + ")")
             insert_counter = insert_counter + 1
 
             if insert_counter > 100000:

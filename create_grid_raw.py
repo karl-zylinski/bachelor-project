@@ -1,6 +1,7 @@
 import time
 import os
 import datetime
+import pickle
 
 min_dist = 0
 max_dist = 3000
@@ -38,26 +39,21 @@ def sql_exec(cmd):
 
     conn.execute(cmd)
 
-create_table_columns = ""
-
-for i in range(0, len(dest_columns)):
-    col_title = dest_columns[i]
-    col_data_type = dest_data_types[i]
-    create_table_columns += col_title + " " + col_data_type + ","
-
 # add extra columns not in gaia source
 extra_columns = ["distance"]
 extra_coumns_data_type = ["real"]
 distance_col_idx = len(dest_columns)
 
-for i in range(0, len(extra_columns)):
-    col_title = extra_columns[i]
-    col_data_type = extra_coumns_data_type[i]
-    create_table_columns += col_title + " " + col_data_type + ","
-
 all_columns = dest_columns + extra_columns
-all_columns_text = ",".join(all_columns) # for query
-create_table_columns = create_table_columns[:-1] # skip last comma
+all_columns_data_types = dest_data_types + extra_coumns_data_type
+
+columns_fh = open("%s/columns" % db_folder, "w")
+columns_fh.write(str(all_columns))
+columns_fh.close()
+
+columns_dt_fh = open("%s/columns_data_types" % db_folder, "w")
+columns_dt_fh.write(str(all_columns_data_types))
+columns_dt_fh.close()
 
 i_dec = all_columns.index("dec")
 i_ra = all_columns.index("ra")
@@ -89,8 +85,8 @@ def write_star(idec_180, ira, idist, data):
     if stars_in_cur_raw_db > stars_per_raw_db_file:
         raw_db_name = "%s/raw_db_%d.raw_db" % (db_folder, raw_db_num)
         print("Saving raw database %d to %s" % (raw_db_num, raw_db_name))
-        f = open(raw_db_name, 'w')
-        f.write(str(grid))
+        f = open(raw_db_name, 'wb')
+        pickle.dump(grid, f)
         f.close()
         grid = {}
         raw_db_num = raw_db_num + 1
