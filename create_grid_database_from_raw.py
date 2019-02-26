@@ -57,7 +57,7 @@ def import_raw_dbs(raw_db_filenames):
     num = len(raw_db_filenames)
     count = 0
     for file in raw_db_filenames:
-        if count % 1000 == 0:
+        if count % 100 == 0:
             print("%d/%d" % (count, num))
 
         count = count + 1
@@ -68,6 +68,7 @@ def import_raw_dbs(raw_db_filenames):
         segment_fh.close()
 
         segment_out_dir = get_segment_out_dir_for_raw_db(file)
+        insertion_value_str = ""
 
         for dist_idx, stars in enumerate(segment): # dist_idx is distance/cell_depth
             if len(stars) == 0:
@@ -79,18 +80,17 @@ def import_raw_dbs(raw_db_filenames):
             cell_db = "%s/%d.db" % (segment_out_dir, dist_idx)
             conn = sqlite3.connect(cell_db)
             c = conn.cursor()
+            c.execute('pragma mmap_size=589934592;')
             c.execute("CREATE TABLE gaia (" + create_table_columns + ")")
 
             insert_counter = 0
+            insertion_value_str = ""
             for star_data in stars:
-                c.execute("INSERT INTO gaia (" + insert_into_table_columns + ") VALUES (" + ",".join(star_data) + ")")
+                insertion_value_str = insertion_value_str + "(" + ",".join(star_data) + "),"
                 insert_counter = insert_counter + 1
 
-                if insert_counter > 100000:
-                    insert_counter = 0
-                    conn.commit()
-
-            conn.commit()
+            insertion_value_str = insertion_value_str[:-1]
+            c.execute("INSERT INTO gaia (" + insert_into_table_columns + ") VALUES %s" % insertion_value_str)
             c.execute("CREATE INDEX index_ra ON gaia (ra)")
             c.execute("CREATE INDEX index_dec ON gaia (dec)")
             c.execute("CREATE INDEX index_parallax ON gaia (parallax)")
@@ -101,7 +101,7 @@ def import_raw_dbs(raw_db_filenames):
             conn.commit()
             conn.close()
 
-num_threads = 4
+num_threads = 10
 raw_dbs = list(filter(lambda x: x.endswith(".raw_db"), os.listdir(raw_dbs_folder)))
 num_raw_dbs = len(raw_dbs)
 num_per_thread = num_raw_dbs//num_threads
