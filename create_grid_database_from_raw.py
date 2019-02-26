@@ -4,18 +4,35 @@ import datetime
 import sqlite3
 import pickle
 
-db_folder = "db_gaia_dr2_rv_2019-02-22-16-04-10"
+db_folder = "db_gaia_dr2_rv_2019-02-25-16-44-00"
 start_time = time.time()
 
-columns_fh = open("%s/columns" % db_folder, "r")
-columns = eval(columns_fh.read())
-columns_fh.close()
+metadata_filename = "%s/metadata" % db_folder
+assert os.path.isfile(metadata_filename), "metadata mising: %s" % metadata_filename
+metadata_fh = open(metadata_filename, "r")
+metadata = metadata_fh.readlines()
+metadata_fh.close()
+metadata_dict = {}
 
-columns_data_types_fh = open("%s/columns_data_types" % db_folder, "r")
-columns_data_types = eval(columns_data_types_fh.read())
-columns_data_types_fh.close()
+for mdi in metadata:
+    key_value_pair = mdi.split(":")
 
-assert(len(columns) == len(columns_data_types))
+    if len(key_value_pair) != 2:
+        error("metadata in %s is of incorrect format" % db_folder)
+
+    metadata_dict[key_value_pair[0]] = key_value_pair[1]
+
+def dict_get_or_error(d, key, err):
+    val = d.get(key)
+    assert val != None, err
+    return val
+
+columns = eval(dict_get_or_error(metadata_dict, "columns", "columns missing in %s" % metadata_filename))
+columns_datatypes = eval(dict_get_or_error(metadata_dict, "columns_datatypes", "columns_datatypes missing in %s" % metadata_filename))
+cell_depth = int(dict_get_or_error(metadata_dict, "cell_depth", "cell_depth missing in %s" % metadata_filename))
+max_distance = int(dict_get_or_error(metadata_dict, "max_distance", "max_distance missing in %s" % metadata_filename))
+
+assert(len(columns) == len(columns_datatypes))
 
 create_table_columns = ""
 
@@ -31,11 +48,16 @@ for file in os.listdir(db_folder):
     if not file.endswith(".raw_db"):
         continue
 
-    grid_fh = open("%s/%s" % (db_folder, file), 'rb')
-    grid = pickle.load(grid_fh)
-    grid_fh.close()
+    # a segment is a angular segment on sky with cells at different depth, like a rod
+    segment_fh = open("%s/%s" % (db_folder, file), 'rb')
+    segment = pickle.load(segment_fh)
+    segment_fh.close()
 
-    for db_name, stars in grid.items():
+    for dist_idx, stars in enumerate(segment): # dist_idx is distance/cell_depth
+        if len(stars) == 0:
+            continue;
+
+        db_name = file.split(".")[0] + "-%d" % dist_idx
         cell_db = "%s/%s.db" % (db_folder, db_name)
         print("Writing cell database: %s" % cell_db)
         conn = sqlite3.connect(cell_db)

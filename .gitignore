@@ -11,3 +11,4 @@ query-result-*
 *.raw_db
 columns
 columns_data_types
+metadata

@@ -3,9 +3,10 @@ import os
 import datetime
 import pickle
 
+disk_bouncing = False
 min_dist = 0
 max_dist = 3000
-stars_per_raw_db_file = 500000
+cell_depth = 60
 start_time = time.time()
 db_folder = datetime.datetime.now().strftime("db_gaia_dr2_rv_%Y-%m-%d-%H-%M-%S")
 
@@ -15,10 +16,6 @@ dest_columns = ["source_id","ref_epoch","ra","ra_error","dec","dec_error","paral
 dest_data_types = ["integer primary key","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real","real"]
 dest_source_mapping = [0] * len(dest_columns)
 dest_parallax_idx = dest_columns.index("parallax")
-
-def error(msg):
-    print(msg)
-    exit(1)
 
 if os.path.isdir(db_folder):
     error("Folder already exists: %s" % db_folder)
@@ -47,19 +44,11 @@ distance_col_idx = len(dest_columns)
 all_columns = dest_columns + extra_columns
 all_columns_data_types = dest_data_types + extra_coumns_data_type
 
-columns_fh = open("%s/columns" % db_folder, "w")
-columns_fh.write(str(all_columns))
-columns_fh.close()
-
-columns_dt_fh = open("%s/columns_data_types" % db_folder, "w")
-columns_dt_fh.write(str(all_columns_data_types))
-columns_dt_fh.close()
-
 i_dec = all_columns.index("dec")
 i_ra = all_columns.index("ra")
 i_distance = all_columns.index("distance")
 
-num_distance_cells = max_dist - min_dist
+num_distance_cells = (max_dist - min_dist)//cell_depth
 num_ra_cells = 360
 num_dec_cells = 180
 
@@ -67,30 +56,88 @@ grid = {}
 
 stars_in_cur_raw_db = 0
 raw_db_num = 0
-def write_star(idec_180, ira, idist, data):
-    global stars_in_cur_raw_db
-    global raw_db_num
-    global grid
 
-    cell_id = "%d-%d-%d" % (idec_180, ira, idist)
-    cell = grid.get(cell_id)
+loaded_segments = {}
 
-    if cell == None:
-        cell = []
-        grid[cell_id] = cell
+def get_segment_filename(segment_coord):
+    return "%s/%d-%d.raw_db" % (db_folder, segment_coord[0], segment_coord[1])
 
-    stars_in_cur_raw_db = stars_in_cur_raw_db + 1
-    cell.append(data)
+def unload_segment(segment_coord):
+    segment = loaded_segments[segment_coord]
+    segment_filename = get_segment_filename(segment_coord)
+    segment_fh = open(segment_filename, 'wb')
+    pickle.dump(segment, segment_fh)
+    segment_fh.close()
 
-    if stars_in_cur_raw_db > stars_per_raw_db_file:
-        raw_db_name = "%s/raw_db_%d.raw_db" % (db_folder, raw_db_num)
-        print("Saving raw database %d to %s" % (raw_db_num, raw_db_name))
-        f = open(raw_db_name, 'wb')
-        pickle.dump(grid, f)
-        f.close()
-        grid = {}
-        raw_db_num = raw_db_num + 1
-        stars_in_cur_raw_db = 0
+def load_segment(segment_coord):
+    if loaded_segments.get(segment_coord) != None:
+        return
+
+    segment_filename = get_segment_filename(segment_coord)
+
+    if os.path.isfile(segment_filename):
+        segment_fh = open(segment_filename, 'rb')
+        loaded_segments[segment_coord] = pickle.load(segment_fh)
+        segment_fh.close()
+    else:
+        loaded_segments[segment_coord] = []
+        segment = loaded_segments[segment_coord]
+        
+        for dist_idx in range(0, num_distance_cells):
+            segment.append([])
+
+to_keep_loaded_radius = 10
+def ensure_segment_loaded(segment_coord):
+    if loaded_segments.get(segment_coord) != None:
+        return
+
+    load_segment(segment_coord)
+
+    if (disk_bouncing == False):
+        return
+
+    cur_ra = segment_coord[0]
+    cur_dec = segment_coord[1]
+
+    min_allowed_ra = cur_ra - to_keep_loaded_radius
+    max_allowed_ra = cur_ra + to_keep_loaded_radius
+    if min_allowed_ra < 0:
+        min_allowed_ra = 360 + min_allowed_ra
+    elif max_allowed_ra > 360:
+        max_allowed_ra = max_allowed_ra - 360
+
+    min_allowed_dec = cur_dec - to_keep_loaded_radius
+    max_allowed_dec = cur_dec + to_keep_loaded_radius
+    if min_allowed_dec < 0:
+        min_allowed_dec = 180 + min_allowed_dec
+    elif max_allowed_dec > 180:
+        max_allowed_dec = max_allowed_dec - 180
+
+    for ls_coord in loaded_segments.keys():
+        ls_ra = ls_coord[0]
+        ls_dec = ls_coord[1]
+
+        if((
+            (min_allowed_ra < max_allowed_ra and ls_ra > min_allowed_ra and ls_ra < max_allowed_ra)
+            or
+            (min_allowed_ra > max_allowed_ra and (ls_ra > min_allowed_ra or ls_ra < max_allowed_ra))
+        ) and (
+            (min_allowed_dec < max_allowed_dec and ls_dec > min_allowed_dec and ls_dec < max_allowed_dec)
+            or
+            (min_allowed_dec > max_allowed_dec and (ls_dec > min_allowed_dec or ls_dec < max_allowed_dec)))
+        ):
+            continue
+
+        unload_segment(ls_coord)
+
+def write_star(ra, dec, dist, data):
+    ra_idx = int(ra)
+    dec_idx = int(dec + 90) # gonna use as index, must be in 0 -  180 range
+    dist_idx = int(distance/cell_depth)
+    segment_coord = (ra_idx, dec_idx)
+    ensure_segment_loaded(segment_coord)
+    segment = loaded_segments[segment_coord]
+    segment[dist_idx].append(data)
 
 invalid_lines = 0
 no_parallax_skipped = 0
@@ -141,19 +188,26 @@ for file in os.listdir(source_dir):
         ra = float(dest_values[i_ra])
         dec = float(dest_values[i_dec])
 
-        ira = int(ra)
-        idec_180 = int(dec + 90) # gonna use as index, must be in 0 -  180 range
-        idist = int(distance)
-
-        write_star(idec_180, ira, idist, dest_values)
+        write_star(ra, dec, distance, dest_values)
         total_counter = total_counter + 1
     
     file_counter = file_counter + 1
     print("Written to grid for csv: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))
 
+for ls in loaded_segments:
+    unload_segment(ls)
+
+# write metadata file
+metadata_fh = open("%s/metadata" % db_folder, "w")
+metadata_fh.write("max_distance:%d\n" % max_dist)
+metadata_fh.write("cell_depth:%d\n" % cell_depth)
+metadata_fh.write("columns:%s\n" % str(all_columns))
+metadata_fh.write("columns_datatypes:%s" % str(all_columns_data_types))
+metadata_fh.close()
+
 end_time = time.time()
 dt = end_time - start_time
-print("Imported %d stars to raw cell table" % total_counter)
+print("Imported %d stars to raw gid databases" % total_counter)
 print("Skipped %d because they lacked parallax" % no_parallax_skipped)
 print("Skipped %d because csv line was of wrong length (%d)" % (invalid_lines, len(source_columns)))
 print("Finished in " + str(int(dt)) + " seconds")
