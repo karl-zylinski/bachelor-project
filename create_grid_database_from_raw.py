@@ -3,6 +3,8 @@ import os
 import datetime
 import sqlite3
 import pickle
+import threading
+import shutil
 
 db_folder = "db_gaia_dr2_rv_2019-02-25-16-44-00"
 start_time = time.time()
@@ -13,6 +15,7 @@ metadata_fh = open(metadata_filename, "r")
 metadata = metadata_fh.readlines()
 metadata_fh.close()
 metadata_dict = {}
+raw_dbs_folder = "%s/raw_dbs" % db_folder
 
 for mdi in metadata:
     key_value_pair = mdi.split(":")
@@ -44,49 +47,87 @@ for i in range(0, len(columns)):
 create_table_columns = create_table_columns[:-1]
 insert_into_table_columns = ",".join(columns)
 
-for file in os.listdir(db_folder):
-    if not file.endswith(".raw_db"):
-        continue
+def get_segment_out_dir_for_raw_db(raw_db):
+    segment_dec_ra = raw_db.split(".")[0].split("-")
+    segment_dec = segment_dec_ra[0]
+    segment_ra = segment_dec_ra[1]
+    return "%s/%s/%s" % (db_folder, segment_dec, segment_ra)
 
-    # a segment is a angular segment on sky with cells at different depth, like a rod
-    segment_fh = open("%s/%s" % (db_folder, file), 'rb')
-    segment = pickle.load(segment_fh)
-    segment_fh.close()
+def import_raw_dbs(raw_db_filenames):
+    num = len(raw_db_filenames)
+    count = 0
+    for file in raw_db_filenames:
+        if count % 1000 == 0:
+            print("%d/%d" % (count, num))
 
-    for dist_idx, stars in enumerate(segment): # dist_idx is distance/cell_depth
-        if len(stars) == 0:
-            continue;
+        count = count + 1
+        # a segment is a angular segment on sky with cells at different depth, like a rod
 
-        db_name = file.split(".")[0] + "-%d" % dist_idx
-        cell_db = "%s/%s.db" % (db_folder, db_name)
-        print("Writing cell database: %s" % cell_db)
-        conn = sqlite3.connect(cell_db)
-        c = conn.cursor()
-        c.execute("CREATE TABLE gaia (" + create_table_columns + ")")
+        segment_fh = open("%s/%s" % (raw_dbs_folder, file), 'rb')
+        segment = pickle.load(segment_fh)
+        segment_fh.close()
 
-        insert_counter = 0
-        for star_data in stars:
-            c.execute("INSERT INTO gaia (" + insert_into_table_columns + ") VALUES (" + ",".join(star_data) + ")")
-            insert_counter = insert_counter + 1
+        segment_out_dir = get_segment_out_dir_for_raw_db(file)
 
-            if insert_counter > 100000:
-                insert_counter = 0
-                conn.commit()
+        for dist_idx, stars in enumerate(segment): # dist_idx is distance/cell_depth
+            if len(stars) == 0:
+                continue
 
-        conn.commit()
-        c.execute("CREATE INDEX index_ra ON gaia (ra)")
-        c.execute("CREATE INDEX index_dec ON gaia (dec)")
-        c.execute("CREATE INDEX index_parallax ON gaia (parallax)")
-        c.execute("CREATE INDEX index_pmra ON gaia (pmra)")
-        c.execute("CREATE INDEX index_pmdec ON gaia (pmdec)")
-        c.execute("CREATE INDEX index_radial_velocity ON gaia (radial_velocity)")
-        c.execute("CREATE INDEX index_distance ON gaia (distance)")
-        conn.commit()
-        conn.close()
+            if not os.path.isdir(segment_out_dir):
+                os.makedirs(segment_out_dir)
+
+            cell_db = "%s/%d.db" % (segment_out_dir, dist_idx)
+            conn = sqlite3.connect(cell_db)
+            c = conn.cursor()
+            c.execute("CREATE TABLE gaia (" + create_table_columns + ")")
+
+            insert_counter = 0
+            for star_data in stars:
+                c.execute("INSERT INTO gaia (" + insert_into_table_columns + ") VALUES (" + ",".join(star_data) + ")")
+                insert_counter = insert_counter + 1
+
+                if insert_counter > 100000:
+                    insert_counter = 0
+                    conn.commit()
+
+            conn.commit()
+            c.execute("CREATE INDEX index_ra ON gaia (ra)")
+            c.execute("CREATE INDEX index_dec ON gaia (dec)")
+            c.execute("CREATE INDEX index_parallax ON gaia (parallax)")
+            c.execute("CREATE INDEX index_pmra ON gaia (pmra)")
+            c.execute("CREATE INDEX index_pmdec ON gaia (pmdec)")
+            c.execute("CREATE INDEX index_radial_velocity ON gaia (radial_velocity)")
+            c.execute("CREATE INDEX index_distance ON gaia (distance)")
+            conn.commit()
+            conn.close()
+
+num_threads = 4
+raw_dbs = list(filter(lambda x: x.endswith(".raw_db"), os.listdir(raw_dbs_folder)))
+num_raw_dbs = len(raw_dbs)
+num_per_thread = num_raw_dbs//num_threads
+
+for rdb in raw_dbs:
+    dec_dir = "%s/%s" % (db_folder, rdb.split("-")[0])
+    
+    if os.path.isdir(dec_dir):
+        shutil.rmtree(dec_dir)
+
+threads = []
+
+for i in range(0, num_threads):
+    start = i * num_per_thread
+    end = (i + 1) * num_per_thread
+
+    if i == num_threads:
+        end = num_raw_dbs
+
+    thread = threading.Thread(target = import_raw_dbs, kwargs = {'raw_db_filenames': raw_dbs[start:end]})
+    threads.append(thread)
+    thread.start()
+
+for t in threads:
+    t.join()
 
 end_time = time.time()
 dt = end_time - start_time
-print("Imported %d stars to raw cell table" % total_counter)
-print("Skipped %d because they lacked parallax" % no_parallax_skipped)
-print("Skipped %d because csv line was of wrong length (%d)" % (invalid_lines, len(source_columns)))
 print("Finished in " + str(int(dt)) + " seconds")

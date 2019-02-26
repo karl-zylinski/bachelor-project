@@ -17,10 +17,12 @@ dest_data_types = ["integer primary key","real","real","real","real","real","rea
 dest_source_mapping = [0] * len(dest_columns)
 dest_parallax_idx = dest_columns.index("parallax")
 
-if os.path.isdir(db_folder):
-    error("Folder already exists: %s" % db_folder)
-
+assert not os.path.isdir(db_folder), "Folder already exists: %s" % db_folder
 os.mkdir(db_folder)
+
+raw_dbs_folder = "%s/raw_dbs" % db_folder
+assert not os.path.isdir(raw_dbs_folder), "Folder already exists: %s" % raw_dbs_folder
+os.mkdir(raw_dbs_folder)
 
 for i, d in enumerate(dest_columns):
     dest_source_mapping[i] = source_columns.index(d)
@@ -60,7 +62,7 @@ raw_db_num = 0
 loaded_segments = {}
 
 def get_segment_filename(segment_coord):
-    return "%s/%d-%d.raw_db" % (db_folder, segment_coord[0], segment_coord[1])
+    return "%s/%d-%d.raw_db" % (raw_dbs_folder, segment_coord[0], segment_coord[1])
 
 def unload_segment(segment_coord):
     segment = loaded_segments[segment_coord]
