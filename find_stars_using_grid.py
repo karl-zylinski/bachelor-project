@@ -31,6 +31,7 @@ rad_to_deg = 180/math.pi
 year_to_sec = 365.25 * 24 * 3600
 mas_to_deg = 1.0/3600000.0
 mas_per_yr_to_rad_per_s = (mas_to_deg*deg_to_rad)/year_to_sec
+parsec_to_km = 3.08567758 * math.pow(10, 13)
 
 def vec3_len(v):
     return math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
@@ -148,7 +149,6 @@ def get_connection(db_name, star_idx):
         open_connections[db_name] = conn_obj
         return conn
 
-
 def remove_unused_connections(cur_idx):
     to_remove = []
 
@@ -216,7 +216,15 @@ for ra_entry in os.listdir(db_folder):
                 min_dec = dec - max_angular_sep
                 max_dec = dec + max_angular_sep
 
-                neighbours_to_add = get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
+                # this is a mas/yr value that corresponds to angular value for tangential speed max_vel_mag_diff/2 for this star
+                ang_vel_diff = (max_vel_mag_diff/2) / (parsec_to_km * d * mas_per_yr_to_rad_per_s)
+
+                pmra_ang_vel_min = pmra - ang_vel_diff
+                pmra_ang_vel_max = pmra + ang_vel_diff
+                pmdec_ang_vel_min = pmdec - ang_vel_diff
+                pmdec_ang_vel_max = pmdec + ang_vel_diff
+
+                neighbours_to_include = get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
 
                 # this is far from perfect, it just "boxes" in stars near the current, ie not a real distance check
                 # but it's fast due to indexed database columns
@@ -226,11 +234,17 @@ for ra_entry in os.listdir(db_folder):
                     WHERE source_id IS NOT %d
                     AND distance > %f AND distance < %f
                     AND ra > %f AND ra < %f
-                    AND dec > %f AND dec < %f''' % (sid, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
+                    AND dec > %f AND dec < %f
+                    AND pmra > %f AND pmra < %f
+                    AND pmdec > %f AND pmdec < %f''' % (
+                        sid, min_d, max_d, min_ra, max_ra, min_dec,
+                        max_dec, pmra_ang_vel_min, pmra_ang_vel_max,
+                        pmdec_ang_vel_min, pmdec_ang_vel_max
+                    )
 
                 nearby_stars = c.execute(find_nearby_query).fetchall()
 
-                for n in neighbours_to_add:
+                for n in neighbours_to_include:
                     nconn = get_connection(n, stars_done)
                     nc = nconn.cursor()
                     nearby_stars.extend(nc.execute(find_nearby_query).fetchall())
