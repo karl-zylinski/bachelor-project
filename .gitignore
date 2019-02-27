@@ -13,3 +13,4 @@ columns
 columns_data_types
 metadata
 db_gaia_dr2*
+__pycache__

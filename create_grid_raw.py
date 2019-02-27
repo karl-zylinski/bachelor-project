@@ -51,18 +51,10 @@ i_ra = all_columns.index("ra")
 i_distance = all_columns.index("distance")
 
 num_distance_cells = (max_dist - min_dist)//cell_depth
-num_ra_cells = 360
-num_dec_cells = 180
-
-grid = {}
-
-stars_in_cur_raw_db = 0
-raw_db_num = 0
-
 loaded_segments = {}
 
 def get_segment_filename(segment_coord):
-    return "%s/%d-%d.raw_db" % (raw_dbs_folder, segment_coord[0], segment_coord[1])
+    return "%s/%d%+d.raw_db" % (raw_dbs_folder, segment_coord[0], segment_coord[1])
 
 def unload_segment(segment_coord):
     segment = loaded_segments[segment_coord]
@@ -108,12 +100,13 @@ def ensure_segment_loaded(segment_coord):
     elif max_allowed_ra > 360:
         max_allowed_ra = max_allowed_ra - 360
 
+    # THIS IS BROKEN FIX SO IT DOES NOT USE 180 DEC AND FLIP RA WHEN DEC GOES OVER ZENITH OR NADIR
     min_allowed_dec = cur_dec - to_keep_loaded_radius
     max_allowed_dec = cur_dec + to_keep_loaded_radius
-    if min_allowed_dec < 0:
-        min_allowed_dec = 180 + min_allowed_dec
-    elif max_allowed_dec > 180:
-        max_allowed_dec = max_allowed_dec - 180
+    #if min_allowed_dec < 180:
+    #    min_allowed_dec = 180 + min_allowed_dec
+    #elif max_allowed_dec > 180:
+    #    max_allowed_dec = max_allowed_dec - 180
 
     for ls_coord in loaded_segments.keys():
         ls_ra = ls_coord[0]
@@ -134,7 +127,7 @@ def ensure_segment_loaded(segment_coord):
 
 def write_star(ra, dec, dist, data):
     ra_idx = int(ra)
-    dec_idx = int(dec + 90) # gonna use as index, must be in 0 -  180 range
+    dec_idx = int(dec)
     dist_idx = int(distance/cell_depth)
     segment_coord = (ra_idx, dec_idx)
     ensure_segment_loaded(segment_coord)
