@@ -1,3 +1,13 @@
+# Author: Karl Zylinski, Uppsala University
+
+# The purpose os of the file is to take gaia data and split it into segments.
+# Stars with the same integer part of ra and dec are grouped into a segment,
+# each segment is a list of cells where each cell has depth governed by cell_depth.
+
+# Stars are written to .raw_db files, these are later, by other scripts,
+# processed into .db files, one for each cell (i.e. each .db file  is associtaed
+# with a unique comibination of (ra, dec, distance).
+
 import time
 import os
 import datetime
@@ -87,6 +97,8 @@ def ensure_segment_loaded(segment_coord):
 
     load_segment(segment_coord)
 
+    # Disk bouncing disabled, not needed for RV catalogue... Will be needed for complete
+    # gaia catalogue... Needs repairs, see below.
     if (disk_bouncing == False):
         return
 

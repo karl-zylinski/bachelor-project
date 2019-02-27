@@ -1,16 +1,20 @@
+# Author: Karl Zylinski, Uppsala University
+
 import sqlite3
 import math
 import datetime
 import os
 import metadata
 import dict_utils
+import keyboard
+from functools import reduce
 
 db_folder = "db_gaia_dr2_rv_2019-02-26-18-11-25"
 metadata_dict = metadata.get(db_folder)
 cell_depth = int(dict_utils.get_or_error(metadata_dict, "cell_depth", "cell_depth missing in %s metadata" % db_folder))
 
-debug_print_found = True
-max_sep = 1 # maximal separation of pairs, pc
+debug_print_found = False
+max_sep = 5 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
 max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km/s
 columns_to_fetch = "source_id, ra, dec, parallax, pmra, pmdec, radial_velocity, distance, phot_g_mean_mag"
@@ -114,8 +118,8 @@ def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, m
 
     return to_add
 
-comoving_pairs = [] # index is pair identifier, each entry is an array of stars
-star_sid_to_pair_idx = {} # maps star source_id to comoving_pairs index, for checking for redundancies
+comoving_groups = [] # index is pair identifier, each entry is an array of stars
+star_sid_to_comoving_group_idx = {} # maps star source_id to comoving_groups index, for checking for redundancies
 
 def str_to_int(str):
     try:
@@ -160,8 +164,19 @@ def remove_unused_connections(cur_idx):
     for r in to_remove:
         del open_connections[r]
 
+run = True
+
+def quit(key):
+    global run
+    run = False
+
+keyboard.hook_key('q', quit)
+
 stars_done = 0
 for ra_entry in os.listdir(db_folder):
+    if run == False:
+        break
+
     ra_folder = "%s/%s" % (db_folder, ra_entry)
     if not os.path.isdir(ra_folder):
         continue
@@ -175,6 +190,9 @@ for ra_entry in os.listdir(db_folder):
     ras_done = ras_done + 1
 
     for dec_entry in os.listdir(ra_folder):
+        if run == False:
+            break
+
         ra_dec_folder = "%s/%s" % (ra_folder, dec_entry)
         
         if not os.path.isdir(ra_dec_folder):
@@ -277,34 +295,49 @@ for ra_entry in os.listdir(db_folder):
                     if (s_ns_angle * rad_to_deg) < max_vel_angle_diff and math.fabs(ns_speed - speed) < max_vel_mag_diff:
                         nearby_stars_similar_velocity.append(ns)
 
-                # dont care about non-binary systems for now
-                if len(nearby_stars_similar_velocity) != 1:
+                if len(nearby_stars_similar_velocity) == 0:
                     continue
 
-                nearby_stars_similar_velocity.append(s)
-                # nearby_stars_similar_velocity should always be length 2 at this point, i.e we only look after pairs
-                s1 = nearby_stars_similar_velocity[0]
-                s2 = nearby_stars_similar_velocity[1]
-                sid1 = s1[i_source_id]
-                sid2 = s2[i_source_id]
-                pair_idx1 = star_sid_to_pair_idx.get(sid1)
-                pair_idx2 = star_sid_to_pair_idx.get(sid2)
+                stars_in_group = set(nearby_stars_similar_velocity + [s])
+                groups_to_combine = set()
 
-                # pair already exists?
-                if pair_idx1 != None and pair_idx2 != None and pair_idx1 == pair_idx2:
-                    continue
+                for s in stars_in_group:
+                    sid = s[i_source_id]
+                    group_idx = star_sid_to_comoving_group_idx.get(sid)
 
-                new_idx = len(comoving_pairs)
-                comoving_pairs.append([s1, s2])
-                star_sid_to_pair_idx[sid1] = new_idx
-                star_sid_to_pair_idx[sid2] = new_idx
+                    if group_idx != None:
+                        groups_to_combine.add(group_idx)
+
+                for group_idx in groups_to_combine:
+                    g = comoving_groups[group_idx]
+                    g["dead"] = True
+
+                    for s in g["stars"]:
+                        stars_in_group.add(s)
+                        del star_sid_to_comoving_group_idx[s[i_source_id]]
+
+                group_obj = {}
+                group_obj["dead"] = False
+                group_idx = len(comoving_groups)
+                for s in stars_in_group:
+                    group_obj["stars"] = list(stars_in_group)
+                    group_obj["size"] = len(stars_in_group)
+                    star_sid_to_comoving_group_idx[s[i_source_id]] = group_idx
+
+                comoving_groups.append(group_obj)
 
                 if debug_print_found:
-                    print(nearby_stars_similar_velocity[0])
-                    print(nearby_stars_similar_velocity[1])
-                    print("")
+                    print("Found comoving group of size %d" % len(stars_in_group))
+
+comoving_groups_to_output = []
+
+for g in comoving_groups:
+    if g["dead"]:
+        continue
+
+    comoving_groups_to_output.append(g)
 
 output_name = datetime.datetime.now().strftime("found-pairs-%Y-%m-%d-%H-%M-%S.txt")
 file = open(output_name,"w")
-file.write(str(comoving_pairs))
+file.write(str(comoving_groups_to_output))
 file.close()
