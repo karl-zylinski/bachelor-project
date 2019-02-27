@@ -106,7 +106,10 @@ def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, m
                 if coord_dist < 0:
                     continue # no wrap around for distance
 
-                to_add.append("%s/%d/%d/%d.db" % (db_folder, coord_ra, coord_dec, coord_dist))
+                db_name = "%s/%d/%+d/%d.db" % (db_folder, coord_ra, coord_dec, coord_dist)
+
+                if os.path.isfile(db_name):
+                    to_add.append(db_name)
 
     return to_add
 
@@ -128,7 +131,36 @@ def file_remove_extension(path):
     return path[0:ext_sep]
 
 ras_done = 0
+open_connections = {}
 
+def get_connection(db_name, star_idx):
+    existing = open_connections.get(db_name)
+
+    if existing:
+        existing["used_at"] = star_idx
+        return existing["conn"]
+    else:
+        conn = sqlite3.connect(db_name)
+        conn.execute('pragma mmap_size=10000000;')
+        conn_obj = {}
+        conn_obj["used_at"] = star_idx
+        conn_obj["conn"] = conn
+        open_connections[db_name] = conn_obj
+        return conn
+
+
+def remove_unused_connections(cur_idx):
+    to_remove = []
+
+    for db_name, c in open_connections.items():
+        if cur_idx - c["used_at"] > 100:
+            c["conn"].close()
+            to_remove.append(db_name)
+
+    for r in to_remove:
+        del open_connections[r]
+
+stars_done = 0
 for ra_entry in os.listdir(db_folder):
     ra_folder = "%s/%s" % (db_folder, ra_entry)
     if not os.path.isdir(ra_folder):
@@ -157,13 +189,15 @@ for ra_entry in os.listdir(db_folder):
             if not db.endswith(".db"):
                 continue
 
+            if stars_done % 100 == 0:
+                remove_unused_connections(stars_done)
+
             idist_idx = str_to_int(file_remove_extension(db))
             assert idist_idx != None, ".db file should have only numeric distance in name"
             idist = idist_idx * cell_depth
             db_filename = "%s/%s" % (ra_dec_folder, db)
-            conn = sqlite3.connect(db_filename)
+            conn = get_connection(db_filename, stars_done)
             c = conn.cursor()
-            c.execute('pragma mmap_size=589934592;')
             all_stars = c.execute("SELECT %s FROM gaia" % columns_to_fetch).fetchall()
 
             for s in all_stars:
@@ -182,7 +216,7 @@ for ra_entry in os.listdir(db_folder):
                 min_dec = dec - max_angular_sep
                 max_dec = dec + max_angular_sep
 
-                get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
+                neighbours_to_add = get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
 
                 # this is far from perfect, it just "boxes" in stars near the current, ie not a real distance check
                 # but it's fast due to indexed database columns
@@ -195,6 +229,13 @@ for ra_entry in os.listdir(db_folder):
                     AND dec > %f AND dec < %f''' % (sid, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
 
                 nearby_stars = c.execute(find_nearby_query).fetchall()
+
+                for n in neighbours_to_add:
+                    nconn = get_connection(n, stars_done)
+                    nc = nconn.cursor()
+                    nearby_stars.extend(nc.execute(find_nearby_query).fetchall())
+
+                stars_done = stars_done + 1
 
                 if len(nearby_stars) == 0:
                     continue
@@ -248,7 +289,6 @@ for ra_entry in os.listdir(db_folder):
                     print(nearby_stars_similar_velocity[0])
                     print(nearby_stars_similar_velocity[1])
                     print("")
-            c.close()
 
 output_name = datetime.datetime.now().strftime("found-pairs-%Y-%m-%d-%H-%M-%S.txt")
 file = open(output_name,"w")
