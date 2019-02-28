@@ -5,7 +5,8 @@ import mist
 
 mists = mist.parse_isochrones("../MIST_iso_5c76ac8ba0821.iso.cmd")
 
-for miso in mists:
+for i in range(0, len(mists), 15):
+    miso = mists[i]
     lteff = []
     g = []
     i_lteff = miso["columns"].index("log_Teff")

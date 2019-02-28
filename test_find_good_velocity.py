@@ -1,9 +1,9 @@
 import math
 
-age_yr = 5*10^9 # 5 billion
+age_yr = 10*10^9 # 10 billion
 age_sec = age_yr * 365.25 * 24 * 3600
-max_sep = 3.08567758 * math.pow(10, 13) # 1pc in km
-vel = 100 # km/s
+max_sep = 3.08567758 * math.pow(10, 13) # 3pc in km
+vel = 10 # km/s
 dist_travelled = age_sec * vel
 
 # separation_dist = angle * distance_travelled

@@ -107,7 +107,6 @@ def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, m
                 if coord_ra > 359:
                     coord_ra = coord_ra - 360
 
-
                 if coord_dist < 0:
                     continue # no wrap around for distance
 
@@ -331,11 +330,26 @@ for ra_entry in os.listdir(db_folder):
 
 comoving_groups_to_output = []
 
+num_pairs_of_size = {}
+
 for g in comoving_groups:
     if g["dead"]:
         continue
 
+    cur_num = num_pairs_of_size.get(g["size"])
+    if cur_num == None:
+        num_pairs_of_size[g["size"]] = 1
+    else:
+        num_pairs_of_size[g["size"]] = cur_num + 1
+
+    del g["dead"]
     comoving_groups_to_output.append(g)
+
+print()
+print("Found:")
+print("------")
+for size, num in num_pairs_of_size.items():
+    print("%d of size %d" % (num, size))
 
 output_name = datetime.datetime.now().strftime("found-pairs-%Y-%m-%d-%H-%M-%S.txt")
 file = open(output_name,"w")
