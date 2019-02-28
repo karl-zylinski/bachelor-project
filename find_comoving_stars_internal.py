@@ -9,6 +9,7 @@ import sqlite3
 import vec3
 import conv
 import math
+import datetime
 
 # The two following functions does some magical db connection
 # cache where a connection that hasn't been used in like 100 star lookups
@@ -198,3 +199,23 @@ def find(db_filename, state, debug_print_found,
 
         if debug_print_found:
             print("Found comoving group of size %d" % len(comoving_group))
+
+def save_result(state):
+    comoving_groups_to_output = []
+    comoving_groups = state["comoving_groups"]
+    group_id = 0 # only unique inside each comoving-groups file
+    for g in comoving_groups:
+        if g["dead"]:
+            continue
+
+        del g["dead"]
+        g["id"] = group_id
+        comoving_groups_to_output.append(g)
+        group_id = group_id + 1
+
+    output_name = datetime.datetime.now().strftime("comoving-groups-%Y-%m-%d-%H-%M-%S.txt")
+    file = open(output_name,"w")
+    file.write(str(comoving_groups_to_output))
+    file.close()
+
+    print("Result saved to %s" % output_name)

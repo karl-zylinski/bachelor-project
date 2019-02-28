@@ -1,3 +1,8 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Dumps Gaia source data into a single db. Not really used,
+# instead look at the creat_grid* scripts
+
 import sqlite3
 import time
 import threading

@@ -1,9 +1,26 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Goes through the ouput from the find_comoving_stars* scripts and prints
+# a list of clusters inside, how many there are of each cluster size etc.
+
 import sys
 import os
+import utils_str
 
-assert len(sys.argv) > 1, "Usage: found_groups_list.py file [size]"
+def verify_arguments():
+    if len(sys.argv) != 2 and len(sys.argv) != 3:
+        return False
+
+    if not os.path.isfile(sys.argv[1]):
+        return False
+
+    if len(sys.argv) == 3 and utils_str.to_int(sys.argv[2]) == None:
+        return False
+
+    return True
+
+assert verify_arguments(), "Usage: found_groups_list.py file [size]"
 input_filename = sys.argv[1]
-assert os.path.isfile(input_filename), "Supplied file does not exist"
 input_fh = open(input_filename, 'rb')
 found_pairs = eval(input_fh.read())
 input_fh.close()
@@ -11,15 +28,10 @@ assert type(found_pairs) is list, "Supplied file has broken format"
 
 if len(sys.argv) == 3:
     input_size = int(sys.argv[2])
+    print("id of groups with size %d:" % input_size)
     for fp in found_pairs:
         if int(fp["size"]) == input_size:
-            print(fp["stars"])
-            dist = 0
-            for s in fp["stars"]:
-                dist = dist + s[7]
-            dist = dist / len(fp["stars"])
-            print()
-            print("Distance: %f" % dist)
+            print(fp["id"])
 else:
     num_pairs_of_size = {}
 

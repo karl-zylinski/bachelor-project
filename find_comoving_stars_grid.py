@@ -152,18 +152,4 @@ for ra_entry in os.listdir(db_folder):
                              max_sep, max_vel_angle_diff, max_vel_mag_diff,
                              lambda min_d, max_d, min_ra, max_ra, min_dec, max_dec: get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec))
 
-comoving_groups_to_output = []
-comoving_groups = state["comoving_groups"]
-for g in comoving_groups:
-    if g["dead"]:
-        continue
-
-    del g["dead"]
-    comoving_groups_to_output.append(g)
-
-output_name = datetime.datetime.now().strftime("comoving-groups-%Y-%m-%d-%H-%M-%S.txt")
-file = open(output_name,"w")
-file.write(str(comoving_groups_to_output))
-file.close()
-
-print("Result saved to %s" % output_name)
+find_comoving_stars_internal.save_result(state)

@@ -32,19 +32,4 @@ state["memory_map_size"] = 8589934592
 find_comoving_stars_internal.find(db_filename, state, debug_print_found,
      max_sep, max_vel_angle_diff, max_vel_mag_diff, None)
 
-comoving_groups = state["comoving_groups"]
-comoving_groups_to_output = []
-
-for g in comoving_groups:
-    if g["dead"]:
-        continue
-
-    del g["dead"]
-    comoving_groups_to_output.append(g)
-
-output_name = datetime.datetime.now().strftime("comoving-groups-%Y-%m-%d-%H-%M-%S.txt")
-file = open(output_name,"w")
-file.write(str(comoving_groups_to_output))
-file.close()
-
-print("Result saved to %s" % output_name)
+find_comoving_stars_internal.save_result(state)
