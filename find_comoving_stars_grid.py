@@ -39,6 +39,10 @@ max_sep = 5 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
 max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km/s
 
+# This uses the max/min_xxx variables to look if those fall outside the current
+# cell. The current cell is specified by (ira, idec, idist), i for integer.
+# If the max/min_xxx do fall outside the cell, the neighbour is found and
+# added to a list. The list is returned at the end.
 def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec):
     min_delta_depth = 0
     max_delta_depth = 0
@@ -104,6 +108,7 @@ def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, m
 ras_done = 0
 state = find_comoving_stars_internal.setup_state()
 
+# goes through ra/dec/dist.db structure inside db_folder
 for ra_entry in os.listdir(db_folder):
     ra_folder = "%s/%s" % (db_folder, ra_entry)
     if not os.path.isdir(ra_folder):
@@ -134,10 +139,15 @@ for ra_entry in os.listdir(db_folder):
             if not db.endswith(".db"):
                 continue
 
-            idist_idx = utils_str.to_int(utils_file.    remove_extension(db))
+            idist_idx = utils_str.to_int(utils_file.remove_extension(db))
             assert idist_idx != None, ".db file should have only numeric distance in name"
             idist = idist_idx * cell_depth
             db_filename = "%s/%s" % (ra_dec_folder, db)
+
+            # Runs the meat of the comoving-star-finder. The big lambda
+            # is there to pass on info to get_neighbour_databases,
+            # which find_comoving_stars_internal.find calls before doing
+            # any sql queries.
             find_comoving_stars_internal.find(db_filename, state, debug_print_found,
                              max_sep, max_vel_angle_diff, max_vel_mag_diff,
                              lambda min_d, max_d, min_ra, max_ra, min_dec, max_dec: get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec))
@@ -151,7 +161,7 @@ for g in comoving_groups:
     del g["dead"]
     comoving_groups_to_output.append(g)
 
-output_name = datetime.datetime.now().strftime("found-pairs-%Y-%m-%d-%H-%M-%S.txt")
+output_name = datetime.datetime.now().strftime("comoving-groups-%Y-%m-%d-%H-%M-%S.txt")
 file = open(output_name,"w")
 file.write(str(comoving_groups_to_output))
 file.close()

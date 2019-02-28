@@ -5,6 +5,7 @@ gaia_source_rv/
 gaia_bork_rv/
 found-pairs-*
 query-result-*
+comoving-groups-*
 *.db
 *.db-journal
 .vs/

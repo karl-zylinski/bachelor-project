@@ -10,6 +10,10 @@ import vec3
 import conv
 import math
 
+# The two following functions does some magical db connection
+# cache where a connection that hasn't been used in like 100 star lookups
+# is thrown away. It is useful for the gridded lookup so db connections aren't
+# thrown out and then re-opened right after.
 def get_connection(db_name, state):
     open_connections = state["open_connections"]
     stars_done = state["stars_done"]
@@ -65,7 +69,7 @@ def setup_state():
 def find(db_filename, state, debug_print_found,
                              max_sep, max_vel_angle_diff, max_vel_mag_diff,
                              get_neighbour_databases):
-
+    # 100 is 100% arbitrary
     if state["stars_done"] % 100 == 0:
         remove_unused_connections(state)
 
@@ -104,8 +108,8 @@ def find(db_filename, state, debug_print_found,
         if get_neighbour_databases != None:
             neighbours_to_include = get_neighbour_databases(min_d, max_d, min_ra, max_ra, min_dec, max_dec)
 
-        # this is far from perfect, it just "boxes" in stars near the current, ie not a real distance check
-        # but it's fast due to indexed database columns
+        # Boxes in stars near current, with similar proper motion. The complete motion
+        # is then compared further down.
         find_nearby_query = '''
             SELECT %s
             FROM gaia
@@ -121,48 +125,53 @@ def find(db_filename, state, debug_print_found,
                 pmdec_ang_vel_min, pmdec_ang_vel_max
             )
 
-        nearby_stars = c.execute(find_nearby_query).fetchall()
+        maybe_comoving_star = c.execute(find_nearby_query).fetchall()
 
         for n in neighbours_to_include:
             nconn = get_connection(n, state)
             nc = nconn.cursor()
-            nearby_stars.extend(nc.execute(find_nearby_query).fetchall())
+            maybe_comoving_star.extend(nc.execute(find_nearby_query).fetchall())
 
         state["stars_done"] = state["stars_done"] + 1
 
-        if len(nearby_stars) == 0:
+        if len(maybe_comoving_star) == 0:
             continue
 
-        # now we want to compare velocity direction and magnitude with each found nearby star
+        # Now we want to compare velocity direction and magnitude with each found nearby star
         # all proper motions are converted into rad/s and celestial velocity is converted to
-        # cartesian vector with unit km/s
+        # cartesian vector with unit km/s.
         pmra_rad_per_s = pmra * conv.mas_per_yr_to_rad_per_s
         pmdec_rad_per_s = pmdec * conv.mas_per_yr_to_rad_per_s
         vel = vec3.from_celestial(pmra_rad_per_s, pmdec_rad_per_s, vrad) # km/s
         speed = vec3.len(vel)
         vel_dir = vec3.scale(vel, 1/speed)
-        nearby_stars_similar_velocity = []
-        for ns in nearby_stars:
-            ns_pmra_rad_per_s = ns[i_pmra] * conv.mas_per_yr_to_rad_per_s
-            ns_pmdec_rad_per_s = ns[i_pmdec] * conv.mas_per_yr_to_rad_per_s
-            ns_vrad = ns[i_radial_velocity] #km/s
-            ns_vel = vec3.from_celestial(ns_pmra_rad_per_s, ns_pmdec_rad_per_s, ns_vrad) # km/s
-            ns_speed = vec3.len(ns_vel)
-            ns_vel_dir = vec3.scale(ns_vel, 1/ns_speed)
-            s_ns_dot = vec3.dot(ns_vel_dir, vel_dir)
-            s_ns_angle = math.acos(s_ns_dot)
+        found_comoving_stars = []
+        for mcs in maybe_comoving_star:
+            mcs_pmra_rad_per_s = mcs[i_pmra] * conv.mas_per_yr_to_rad_per_s
+            mcs_pmdec_rad_per_s = mcs[i_pmdec] * conv.mas_per_yr_to_rad_per_s
+            mcs_vrad = mcs[i_radial_velocity] #km/s
+            mcs_vel = vec3.from_celestial(mcs_pmra_rad_per_s, mcs_pmdec_rad_per_s, mcs_vrad) # km/s
+            mcs_speed = vec3.len(mcs_vel)
+            mcs_vel_dir = vec3.scale(mcs_vel, 1/mcs_speed)
+            s_mcs_dot = vec3.dot(mcs_vel_dir, vel_dir)
+            s_mcs_angle = math.acos(s_mcs_dot)
             
-            # only keep stars within velocity angle separation limit and below speed limit
-            if (s_ns_angle * conv.rad_to_deg) < max_vel_angle_diff and math.fabs(ns_speed - speed) < max_vel_mag_diff:
-                nearby_stars_similar_velocity.append(ns)
+            # Only keep stars within velocity angle separation limit and below speed limit.
+            if (s_mcs_angle * conv.rad_to_deg) < max_vel_angle_diff and math.fabs(mcs_speed - speed) < max_vel_mag_diff:
+                found_comoving_stars.append(mcs)
 
-        if len(nearby_stars_similar_velocity) == 0:
+        if len(found_comoving_stars) == 0:
             continue
 
-        stars_in_group = set(nearby_stars_similar_velocity + [s])
+        comoving_group = set(found_comoving_stars + [s])
+
+        # This last part looks if any of the stars found are present
+        # in comoving groups found previously, if so, a merge of the
+        # groups is done by deleting the old groups and then making
+        # one big group of them all.
         groups_to_combine = set()
 
-        for s in stars_in_group:
+        for s in comoving_group:
             sid = s[i_source_id]
             group_idx = star_sid_to_comoving_group_idx.get(sid)
 
@@ -174,18 +183,18 @@ def find(db_filename, state, debug_print_found,
             g["dead"] = True
 
             for s in g["stars"]:
-                stars_in_group.add(s)
+                comoving_group.add(s)
                 del star_sid_to_comoving_group_idx[s[i_source_id]]
 
         group_obj = {}
         group_obj["dead"] = False
         group_idx = len(comoving_groups)
-        for s in stars_in_group:
-            group_obj["stars"] = list(stars_in_group)
-            group_obj["size"] = len(stars_in_group)
+        for s in comoving_group:
+            group_obj["stars"] = list(comoving_group)
+            group_obj["size"] = len(comoving_group)
             star_sid_to_comoving_group_idx[s[i_source_id]] = group_idx
 
         comoving_groups.append(group_obj)
 
         if debug_print_found:
-            print("Found comoving group of size %d" % len(stars_in_group))
+            print("Found comoving group of size %d" % len(comoving_group))

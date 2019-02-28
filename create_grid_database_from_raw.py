@@ -17,23 +17,25 @@ import pickle
 import threading
 import shutil
 import metadata
-import dict_utils
+import utils_dict
 import re
 
 db_folder = "db_gaia_dr2_rv_2019-02-26-18-11-25"
 start_time = time.time()
 
+# metadata is saved by create_grid_raw.py
 metadata_dict = metadata.get(db_folder)
-columns = eval(dict_utils.get_or_error(metadata_dict, "columns", "columns missing in %s metadata" % db_folder))
-columns_datatypes = eval(dict_utils.get_or_error(metadata_dict, "columns_datatypes", "columns_datatypes missing in %s metadata" % db_folder))
-cell_depth = int(dict_utils.get_or_error(metadata_dict, "cell_depth", "cell_depth missing in %s metadata" % db_folder))
-max_distance = int(dict_utils.get_or_error(metadata_dict, "max_distance", "max_distance missing in %s metadata" % db_folder))
+columns = eval(utils_dict.get_or_error(metadata_dict, "columns", "columns missing in %s metadata" % db_folder))
+columns_datatypes = eval(utils_dict.get_or_error(metadata_dict, "columns_datatypes", "columns_datatypes missing in %s metadata" % db_folder))
+cell_depth = int(utils_dict.get_or_error(metadata_dict, "cell_depth", "cell_depth missing in %s metadata" % db_folder))
+max_distance = int(utils_dict.get_or_error(metadata_dict, "max_distance", "max_distance missing in %s metadata" % db_folder))
 raw_dbs_folder = "%s/raw_dbs" % db_folder
 
 assert(len(columns) == len(columns_datatypes))
 
 create_table_columns = ""
 
+# create the columns string you'd send to a CREATE TABLE command in sql
 for i in range(0, len(columns)):
     col_title = columns[i]
     col_data_type = columns[i]
@@ -49,6 +51,7 @@ def get_segment_out_dir_for_raw_db(raw_db):
     segment_dec = raw_db[ra_dec_split_idx:dec_end_idx]
     return "%s/%s/%s" % (db_folder, segment_ra, segment_dec)
 
+# This is the meat, it is run on a separate thread for each db
 def import_raw_dbs(raw_db_filenames):
     num = len(raw_db_filenames)
     count = 0
@@ -57,12 +60,11 @@ def import_raw_dbs(raw_db_filenames):
             print("%d/%d" % (count, num))
 
         count = count + 1
-        # a segment is a angular segment on sky with cells at different depth, like a rod
 
+        # a segment is a angular segment on sky with cells at different depth, like a rod
         segment_fh = open("%s/%s" % (raw_dbs_folder, file), 'rb')
         segment = pickle.load(segment_fh)
         segment_fh.close()
-
         segment_out_dir = get_segment_out_dir_for_raw_db(file)
         insertion_value_str = ""
 
@@ -102,6 +104,7 @@ raw_dbs = list(filter(lambda x: x.endswith(".raw_db"), os.listdir(raw_dbs_folder
 num_raw_dbs = len(raw_dbs)
 num_per_thread = num_raw_dbs//num_threads
 
+# remove already existing output
 for rdb in raw_dbs:
     ra_dir = "%s/%s" % (db_folder, re.split("\-|\+", rdb)[0])
     
