@@ -1,3 +1,7 @@
+# Author: Karl Zylinski
+
+# Downloads Gaia DR2 (or some flavour of it)
+
 import urllib.request
 import threading
 import time

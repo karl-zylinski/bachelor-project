@@ -1,3 +1,7 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Checks MD5SUM (of Gaia data) using specified by md5_file and dest_dir
+
 import threading
 import time
 import hashlib

@@ -1,3 +1,7 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Some constants
+
 import math
 
 deg_to_rad = math.pi/180

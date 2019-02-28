@@ -1,3 +1,14 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Creates a 3D grid of databases from the output of "create_grid_raw.py"
+# Each database if for one cell, i.e. split into regions of (ra, dec, dist)
+# the ra and dec is 1 degree each in size, the dist is configurable in
+# create_grid_raw.py.
+
+# The output is a bunch of databases inside the folder specified by db_folder
+# arranged like ra/dec/dist.db. These are then used in find_stars_in_db.py,
+# it does quick spatial lookups using this 3D grid.
+
 import time
 import os
 import datetime

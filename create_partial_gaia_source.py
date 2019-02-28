@@ -1,3 +1,7 @@
+# Author: Karl Zylinski
+
+# Takes a random sample from source_dir and throws it into source_partial_dir
+
 import os
 import random
 import shutil

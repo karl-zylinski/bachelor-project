@@ -110,7 +110,7 @@ def find(db_filename, state, debug_print_found,
         neighbours_to_include = []
 
         if get_neighbour_databases != None:
-            get_neighbour_databases(min_d, max_d, min_ra, max_ra, min_dec, max_dec)
+            neighbours_to_include = get_neighbour_databases(min_d, max_d, min_ra, max_ra, min_dec, max_dec)
 
         # this is far from perfect, it just "boxes" in stars near the current, ie not a real distance check
         # but it's fast due to indexed database columns

@@ -102,7 +102,7 @@ def quit(key):
     global run
     run = False
 
-keyboard.hook_key('q', quit)
+#keyboard.hook_key('q', quit)
 state = find_stars_in_db.setup_state()
 
 for ra_entry in os.listdir(db_folder):
