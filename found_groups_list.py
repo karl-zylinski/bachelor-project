@@ -1,7 +1,7 @@
 import sys
 import os
 
-assert len(sys.argv) > 1, "Usage: find_in_found_pairs.py file [size]"
+assert len(sys.argv) > 1, "Usage: found_groups_list.py file [size]"
 input_filename = sys.argv[1]
 assert os.path.isfile(input_filename), "Supplied file does not exist"
 input_fh = open(input_filename, 'rb')

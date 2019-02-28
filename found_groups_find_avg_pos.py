@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 from statistics import mean
 
-assert len(sys.argv) > 1, "Usage: find_avg_pos_in_found_groups.py file"
+assert len(sys.argv) > 1, "Usage: found_groups_find_avg_pos.py file"
 input_filename = sys.argv[1]
 assert os.path.isfile(input_filename), "Supplied file does not exist"
 input_fh = open(input_filename, 'rb')

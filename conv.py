@@ -1,6 +1,6 @@
 # Author: Karl Zylinski, Uppsala University
 
-# Some constants
+# Some conversion constants
 
 import math
 

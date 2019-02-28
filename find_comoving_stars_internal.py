@@ -1,5 +1,14 @@
+# Author: Karl Zylinski
+
+# Goes into an sqlite3 database of Gaia stars and finds comoving ones.
+# Called from other scripts (such as find_comoving_stars_grid.py)
+# The data is returned back to the calling script via the state variable
+# passed to function find. See function setup_state.
+
 import sqlite3
-from const import *
+import vec3
+import conv
+import math
 
 def get_connection(db_name, state):
     open_connections = state["open_connections"]
@@ -44,23 +53,6 @@ i_radial_velocity = 6
 i_distance = 7
 i_phot_g_mean_mag = 8
 
-def vec3_len(v):
-    return math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
-
-def vec3_dot(v1, v2):
-    return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]
-
-def vec3_scale(v, s):
-    return [v[0] * s, v[1] * s, v[2] * s]
-
-# converts celestial vector to cartesian (ra and dec in degrees)
-def vec3_from_celestial(ra, dec, r):
-    ra_rad = ra * deg_to_rad
-    dec_rad = dec * deg_to_rad
-    return [r * math.cos(ra_rad) * math.cos(dec_rad), # cos(ra_rad) * sin(pi/2 - dec_rad)
-            r * math.sin(ra_rad) * math.cos(dec_rad), # sin(ra_rad) * sin(pi/2 - dec_rad)
-            r * math.sin(dec_rad)] # cos(pi/2 - dec_rad)
-
 def setup_state():
     state = {}
     state["stars_done"] = 0
@@ -93,14 +85,14 @@ def find(db_filename, state, debug_print_found,
         d = s[i_distance] # distance in pc
         min_d = d - max_sep
         max_d = d + max_sep
-        max_angular_sep = (max_sep*rad_to_deg)/d
+        max_angular_sep = (max_sep*conv.rad_to_deg)/d
         min_ra = ra - max_angular_sep
         max_ra = ra + max_angular_sep
         min_dec = dec - max_angular_sep
         max_dec = dec + max_angular_sep
 
         # this is a mas/yr value that corresponds to angular value for tangential speed max_vel_mag_diff/2 for this star
-        ang_vel_diff = (max_vel_mag_diff/2) / (parsec_to_km * d * mas_per_yr_to_rad_per_s)
+        ang_vel_diff = (max_vel_mag_diff/2) / (conv.parsec_to_km * d * conv.mas_per_yr_to_rad_per_s)
 
         pmra_ang_vel_min = pmra - ang_vel_diff
         pmra_ang_vel_max = pmra + ang_vel_diff
@@ -144,24 +136,24 @@ def find(db_filename, state, debug_print_found,
         # now we want to compare velocity direction and magnitude with each found nearby star
         # all proper motions are converted into rad/s and celestial velocity is converted to
         # cartesian vector with unit km/s
-        pmra_rad_per_s = pmra * mas_per_yr_to_rad_per_s
-        pmdec_rad_per_s = pmdec * mas_per_yr_to_rad_per_s
-        vel = vec3_from_celestial(pmra_rad_per_s, pmdec_rad_per_s, vrad) # km/s
-        speed = vec3_len(vel)
-        vel_dir = vec3_scale(vel, 1/speed)
+        pmra_rad_per_s = pmra * conv.mas_per_yr_to_rad_per_s
+        pmdec_rad_per_s = pmdec * conv.mas_per_yr_to_rad_per_s
+        vel = vec3.from_celestial(pmra_rad_per_s, pmdec_rad_per_s, vrad) # km/s
+        speed = vec3.len(vel)
+        vel_dir = vec3.scale(vel, 1/speed)
         nearby_stars_similar_velocity = []
         for ns in nearby_stars:
-            ns_pmra_rad_per_s = ns[i_pmra] * mas_per_yr_to_rad_per_s
-            ns_pmdec_rad_per_s = ns[i_pmdec] * mas_per_yr_to_rad_per_s
+            ns_pmra_rad_per_s = ns[i_pmra] * conv.mas_per_yr_to_rad_per_s
+            ns_pmdec_rad_per_s = ns[i_pmdec] * conv.mas_per_yr_to_rad_per_s
             ns_vrad = ns[i_radial_velocity] #km/s
-            ns_vel = vec3_from_celestial(ns_pmra_rad_per_s, ns_pmdec_rad_per_s, ns_vrad) # km/s
-            ns_speed = vec3_len(ns_vel)
-            ns_vel_dir = vec3_scale(ns_vel, 1/ns_speed)
-            s_ns_dot = vec3_dot(ns_vel_dir, vel_dir)
+            ns_vel = vec3.from_celestial(ns_pmra_rad_per_s, ns_pmdec_rad_per_s, ns_vrad) # km/s
+            ns_speed = vec3.len(ns_vel)
+            ns_vel_dir = vec3.scale(ns_vel, 1/ns_speed)
+            s_ns_dot = vec3.dot(ns_vel_dir, vel_dir)
             s_ns_angle = math.acos(s_ns_dot)
             
             # only keep stars within velocity angle separation limit and below speed limit
-            if (s_ns_angle * rad_to_deg) < max_vel_angle_diff and math.fabs(ns_speed - speed) < max_vel_mag_diff:
+            if (s_ns_angle * conv.rad_to_deg) < max_vel_angle_diff and math.fabs(ns_speed - speed) < max_vel_mag_diff:
                 nearby_stars_similar_velocity.append(ns)
 
         if len(nearby_stars_similar_velocity) == 0:

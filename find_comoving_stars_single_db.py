@@ -2,15 +2,25 @@
 
 import datetime
 import metadata
-import dict_utils
-import keyboard
 import os
-import find_stars_in_db
-from const import *
-from functools import reduce
+import sys
+import find_comoving_stars_internal
 
-db_filename = "gaia_dr2_rv_2019-02-22-15-56-06.db"
+def verify_arguments():
+    if len(sys.argv) != 2:
+        return False
 
+    if type(sys.argv[1]) != str:
+        return False
+
+    if not os.path.isdir(sys.argv[1]):
+        return False
+
+    return True
+
+assert verify_arguments(), "Usage: find_comoving_stars_single_db.py database.db"
+
+db_filename = sys.argv[1]
 debug_print_found = True
 max_sep = 5 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
@@ -19,7 +29,7 @@ max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km
 state = find_stars_in_db.setup_state()
 state["memory_map_size"] = 8589934592
 
-find_stars_in_db.find(db_filename, state, debug_print_found,
+find_comoving_stars_internal.find(db_filename, state, debug_print_found,
      max_sep, max_vel_angle_diff, max_vel_mag_diff, None)
 
 comoving_groups_to_output = []
