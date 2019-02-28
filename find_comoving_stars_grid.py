@@ -115,8 +115,6 @@ for ra_entry in os.listdir(db_folder):
         continue
 
     ira = utils_str.to_int(ra_entry)
-    if ira == 1:
-        break
         
     if ira == None:
         continue

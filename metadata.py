@@ -1,3 +1,5 @@
+# metadata for raw_db
+
 import os
 
 def get(db_folder):

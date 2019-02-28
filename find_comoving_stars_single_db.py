@@ -13,7 +13,7 @@ def verify_arguments():
     if type(sys.argv[1]) != str:
         return False
 
-    if not os.path.isdir(sys.argv[1]):
+    if not os.path.isfile(sys.argv[1]):
         return False
 
     return True
@@ -26,7 +26,7 @@ max_sep = 5 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
 max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km/s
 
-state = find_stars_in_db.setup_state()
+state = find_comoving_stars_internal.setup_state()
 state["memory_map_size"] = 8589934592
 
 find_comoving_stars_internal.find(db_filename, state, debug_print_found,

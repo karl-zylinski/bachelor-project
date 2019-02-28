@@ -1,3 +1,7 @@
+# Author: Karl Zylinski
+
+# Tools for working with MIST isochrones
+
 from functools import reduce
 
 def is_comment(line):
