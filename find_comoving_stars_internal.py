@@ -45,6 +45,14 @@ def remove_unused_connections(state):
     for r in to_remove:
         del open_connections[r]
 
+def remove_all_connections(state):
+    open_connections = state["open_connections"]
+
+    for db_name, c in open_connections.items():
+        c["conn"].close()
+
+    state["open_connections"] = []
+
 columns_to_fetch = "source_id, ra, dec, parallax, pmra, pmdec, radial_velocity, distance, phot_g_mean_mag"
 
 # these are just in order as they appear in columns_to_fetch - used to fetch stuff from sql result arrays
@@ -58,7 +66,7 @@ i_radial_velocity = 6
 i_distance = 7
 i_phot_g_mean_mag = 8
 
-def setup_state():
+def init():
     state = {}
     state["stars_done"] = 0
     state["comoving_groups"] = [] # index is pair identifier, each entry is an array of stars
@@ -66,6 +74,9 @@ def setup_state():
     state["open_connections"] = {} # keeps track of database connections
     state["memory_map_size"] = 10000000
     return state
+
+def deinit(state):
+    remove_all_connections(state)
 
 def find(db_filename, state, debug_print_found,
                              max_sep, max_vel_angle_diff, max_vel_mag_diff,
@@ -166,7 +177,7 @@ def find(db_filename, state, debug_print_found,
 
         comoving_group = set(found_comoving_stars + [s])
 
-        # This last part looks if any of the stars found are present
+        # This part looks if any of the stars found are present
         # in comoving groups found previously, if so, a merge of the
         # groups is done by deleting the old groups and then making
         # one big group of them all.

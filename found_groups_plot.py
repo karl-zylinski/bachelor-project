@@ -1,6 +1,6 @@
 # Author: Karl Zylinski, Uppsala University
 
-# Plots the stars found in a group in a ra, dec diagram
+# Plots the stars found in a group in a [ra, dec] diagram with G mag as color
 
 import sys
 import os

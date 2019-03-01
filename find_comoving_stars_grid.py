@@ -106,7 +106,7 @@ def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, m
     return to_add
 
 ras_done = 0
-state = find_comoving_stars_internal.setup_state()
+state = find_comoving_stars_internal.init()
 
 # goes through ra/dec/dist.db structure inside db_folder
 for ra_entry in os.listdir(db_folder):
@@ -151,3 +151,4 @@ for ra_entry in os.listdir(db_folder):
                              lambda min_d, max_d, min_ra, max_ra, min_dec, max_dec: get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec))
 
 find_comoving_stars_internal.save_result(state)
+find_comoving_stars_internal.deinit(state)
