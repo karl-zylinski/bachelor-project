@@ -8,6 +8,15 @@ import time
 import threading
 import os
 import datetime
+import math
+import utils_str
+
+cut_parallax_over_error = 10
+cut_pmra_over_error = 10
+cut_pmdec_over_error = 10
+cut_radial_velocity_over_error = 10
+min_dist = 0 # pc
+max_dist = 3000 # pc
 
 start_time = time.time()
 dry_run = False
@@ -59,14 +68,69 @@ all_columns_text = ",".join(all_columns)
 create_table_columns = create_table_columns[:-1]
 sql_exec("CREATE TABLE gaia (" + create_table_columns + ")")
 
+source_parallax_idx = source_columns.index("parallax")
+source_parallax_over_error_idx = source_columns.index("parallax_over_error")
+source_pmra_idx = source_columns.index("pmra")
+source_pmra_error_idx = source_columns.index("pmra_error")
+source_pmdec_idx = source_columns.index("pmdec")
+source_pmdec_error_idx = source_columns.index("pmdec_error")
+source_radial_velocity_idx = source_columns.index("radial_velocity")
+source_radial_velocity_error_idx = source_columns.index("radial_velocity_error")
+
+skipped_no_parallax = 0
+skipped_cut_pmra = 0
+skipped_cut_pmdec = 0
+skipped_cut_radial_velocity = 0
+skipped_cut_parallax = 0
 total_counter = 0
 invalid_lines = 0
-no_parallax_skipped = 0
 commit_counter = 0
 file_counter = 0
+
+def is_valid(source_values):
+    global skipped_no_parallax
+    global skipped_cut_pmra
+    global skipped_cut_pmdec
+    global skipped_cut_radial_velocity
+    global skipped_cut_parallax
+
+    # sanity
+    if len(source_values) != len(source_columns):
+        return False
+
+    # skip those w/o parallax
+    if (source_values[source_parallax_idx] == ""):
+        skipped_no_parallax = skipped_no_parallax + 1
+        return False
+
+    # pmra error cut
+    pmra_over_error = math.fabs(utils_str.to_float(source_values[source_pmra_idx]) / utils_str.to_float(source_values[source_pmra_error_idx]))
+    if pmra_over_error < cut_pmra_over_error:
+        skipped_cut_pmra = skipped_cut_pmra + 1
+        return False
+
+    # pmdec error cut
+    pmdec_over_error = math.fabs(utils_str.to_float(source_values[source_pmdec_idx]) / utils_str.to_float(source_values[source_pmdec_error_idx]))
+    if pmdec_over_error < cut_pmdec_over_error:
+        skipped_cut_pmdec = skipped_cut_pmdec + 1
+        return False
+
+    # radial_velocity error cut
+    radial_velocity_over_error = math.fabs(utils_str.to_float(source_values[source_radial_velocity_idx]) / utils_str.to_float(source_values[source_radial_velocity_error_idx]))
+    if radial_velocity_over_error < cut_radial_velocity_over_error:
+        skipped_cut_radial_velocity = skipped_cut_radial_velocity + 1
+        return False
+
+    # parallax error cut
+    parallax_over_error = utils_str.to_float(source_values[source_parallax_over_error_idx])
+    if parallax_over_error < cut_parallax_over_error:
+        skipped_cut_parallax = skipped_cut_parallax + 1
+        return False
+
+    return True
+
 def import_file(file):
     global commit_counter
-    global no_parallax_skipped
     global invalid_lines
     global total_counter
     global file_counter
@@ -75,18 +139,9 @@ def import_file(file):
     csv_fh.close()
     for i in range(1, len(csv_lines)): # skip header line
         csv_line = csv_lines[i]
-
-        # sanity check
-        if (csv_line.count(",") + 1) != len(source_columns):
-            invalid_lines = invalid_lines + 1
-            print("In " + file + ": Skipping line " + str(i + 1) + ", not " + str(len(source_columns)) + " cells long")
-            continue
-
         values = csv_line.split(",")
 
-        # skip those w/o parallax
-        if (values[dest_source_mapping[dest_parallax_idx]] == ""):
-            no_parallax_skipped = no_parallax_skipped + 1
+        if not is_valid(values):
             continue
 
         dest_values = [None] * len(all_columns)
@@ -100,8 +155,12 @@ def import_file(file):
                 dest_values[ci] = val
 
         # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
-        dest_values[distance_col_idx] = str(1.0/(float(dest_values[dest_parallax_idx])/1000.0))
+        distance = 1.0/(float(dest_values[dest_parallax_idx])/1000.0)
+        
+        if distance < min_dist or distance > max_dist:
+            continue
 
+        dest_values[distance_col_idx] = str(distance)
         insert_str = "INSERT INTO gaia (" + all_columns_text + ") VALUES (" + ",".join(dest_values) + ")"
         sql_exec(insert_str)
         total_counter = total_counter + 1
@@ -143,6 +202,9 @@ end_time = time.time()
 dt = end_time - start_time
 print()
 print("Imported %d stars" % total_counter)
-print("Skipped %d because they lacked parallax" % no_parallax_skipped)
-print("Skipped %d because csv line was of wrong length (%d)" % (invalid_lines, len(source_columns)))
+print("Skipped %d because they lacked parallax" % skipped_no_parallax)
+print("Skipped %d because pmra over error was under %d" % (skipped_cut_pmra, cut_pmra_over_error))
+print("Skipped %d because pmdec over error was under %d" % (skipped_cut_pmdec, cut_pmdec_over_error))
+print("Skipped %d because radial_velocity over error was under %d" % (skipped_cut_radial_velocity, cut_radial_velocity_over_error))
+print("Skipped %d because parallax over error was under %d" % (skipped_cut_parallax, cut_parallax_over_error))
 print("Finished in " + str(int(dt)) + " seconds")

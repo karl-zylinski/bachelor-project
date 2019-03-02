@@ -19,8 +19,22 @@ import shutil
 import metadata
 import utils_dict
 import re
+import sys
 
-db_folder = "db_gaia_dr2_rv_2019-02-26-18-11-25"
+def verify_arguments():
+    if len(sys.argv) != 2:
+        return False
+
+    if type(sys.argv[1]) != str:
+        return False
+
+    if not os.path.isdir(sys.argv[1]):
+        return False
+
+    return True
+
+assert verify_arguments(), "Usage: create_grid_database_from_raw.py database_dir"
+db_folder = sys.argv[1]
 start_time = time.time()
 
 # metadata is saved by create_grid_raw.py
@@ -89,13 +103,15 @@ def import_raw_dbs(raw_db_filenames):
 
             insertion_value_str = insertion_value_str[:-1]
             c.execute("INSERT INTO gaia (" + insert_into_table_columns + ") VALUES %s" % insertion_value_str)
-            c.execute("CREATE INDEX index_ra ON gaia (ra)")
-            c.execute("CREATE INDEX index_dec ON gaia (dec)")
-            c.execute("CREATE INDEX index_parallax ON gaia (parallax)")
-            c.execute("CREATE INDEX index_pmra ON gaia (pmra)")
-            c.execute("CREATE INDEX index_pmdec ON gaia (pmdec)")
-            c.execute("CREATE INDEX index_radial_velocity ON gaia (radial_velocity)")
-            c.execute("CREATE INDEX index_distance ON gaia (distance)")
+
+            # Probably not needed right now
+            #c.execute("CREATE INDEX index_ra ON gaia (ra)")
+            #c.execute("CREATE INDEX index_dec ON gaia (dec)")
+            #c.execute("CREATE INDEX index_parallax ON gaia (parallax)")
+            #c.execute("CREATE INDEX index_pmra ON gaia (pmra)")
+            #c.execute("CREATE INDEX index_pmdec ON gaia (pmdec)")
+            #c.execute("CREATE INDEX index_radial_velocity ON gaia (radial_velocity)")
+            #c.execute("CREATE INDEX index_distance ON gaia (distance)")
             conn.commit()
             conn.close()
 
@@ -103,13 +119,6 @@ num_threads = 10
 raw_dbs = list(filter(lambda x: x.endswith(".raw_db"), os.listdir(raw_dbs_folder)))
 num_raw_dbs = len(raw_dbs)
 num_per_thread = num_raw_dbs//num_threads
-
-# remove already existing output
-for rdb in raw_dbs:
-    ra_dir = "%s/%s" % (db_folder, re.split("\-|\+", rdb)[0])
-    
-    if os.path.isdir(ra_dir):
-        shutil.rmtree(ra_dir)
 
 threads = []
 

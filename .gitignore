@@ -6,6 +6,7 @@ gaia_bork_rv/
 found-pairs-*
 query-result-*
 comoving-groups-*
+db-*
 *.db
 *.db-journal
 .vs/

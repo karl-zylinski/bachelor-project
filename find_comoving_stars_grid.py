@@ -11,7 +11,7 @@ import keyboard
 import os
 import find_comoving_stars_internal
 import sys
-import utils_file
+import utils_path
 import utils_str
 import conv
 from functools import reduce
@@ -137,7 +137,7 @@ for ra_entry in os.listdir(db_folder):
             if not db.endswith(".db"):
                 continue
 
-            idist_idx = utils_str.to_int(utils_file.remove_extension(db))
+            idist_idx = utils_str.to_int(utils_path.remove_extension(db))
             assert idist_idx != None, ".db file should have only numeric distance in name"
             idist = idist_idx * cell_depth
             db_filename = "%s/%s" % (ra_dec_folder, db)
