@@ -11,24 +11,20 @@ import conv
 import math
 import datetime
 import db_connection_cache
-import gaia_columns
+import metadata
 
-source_columns = gaia_columns.columns
-columns = source_columns + ["distance"]
-columns_to_fetch = ",".join(columns)
-
-# Used to fetch stuff from sql result arrays
-i_source_id = columns.index("source_id")
-i_ra = columns.index("ra")
-i_dec = columns.index("dec")
-i_parallax = columns.index("parallax")
-i_pmra = columns.index("pmra")
-i_pmdec = columns.index("pmdec")
-i_radial_velocity = columns.index("radial_velocity")
-i_distance = columns.index("distance")
-
-def init():
+def init(db_folder, debug_print_found, max_sep, max_vel_angle_diff,
+         max_vel_mag_diff, get_neighbour_databases):
+    metadata_dict = metadata.get(db_folder)
     state = {}
+    state["db_folder"] = db_folder
+    state["metadata"] = metadata_dict
+    state["columns_to_fetch"] = ",".join(metadata_dict["columns"])
+    state["debug_print_found"] = debug_print_found
+    state["max_sep"] = max_sep
+    state["max_vel_angle_diff"] = max_vel_angle_diff
+    state["max_vel_mag_diff"] = max_vel_mag_diff
+    state["get_neighbour_databases"] = get_neighbour_databases
     state["stars_done"] = 0
     state["comoving_groups"] = [] # index is pair identifier, each entry is an array of stars
     state["star_sid_to_comoving_group_idx"] = {} # maps star source_id to comoving_groups index, for checking for redundancies
@@ -38,9 +34,21 @@ def init():
 def deinit(state):
     db_connection_cache.remove_all(state["open_connections"])
 
-def find_comoving_to_star(star, database_cursor, state, in_current_group, debug_print_found,
-                          max_sep, max_vel_angle_diff, max_vel_mag_diff,
-                          get_neighbour_databases):
+def find_comoving_to_star(star, database_cursor, state, in_current_group):
+    max_sep = state["max_sep"]
+    max_vel_angle_diff = state["max_vel_angle_diff"]
+    max_vel_mag_diff = state["max_vel_mag_diff"]
+    get_neighbour_databases = state["get_neighbour_databases"]
+
+    columns = state["metadata"]["columns"]
+    i_source_id = columns.index("source_id")
+    i_pmra = columns.index("pmra")
+    i_pmdec = columns.index("pmdec")
+    i_ra = columns.index("ra")
+    i_dec = columns.index("dec")
+    i_radial_velocity = columns.index("radial_velocity")
+    i_distance = columns.index("distance")
+
     s = star
     sid = s[i_source_id]
 
@@ -50,9 +58,10 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group, debug_
     ra = s[i_ra] # deg
     dec = s[i_dec] # deg
     pmra = s[i_pmra] # mas/yr
-    pmdec = s[i_pmdec] # mas/yr
+    pmdec = s[i_pmra] # mas/yr
     vrad = s[i_radial_velocity] # km/s
     d = s[i_distance] # distance in pc
+    cell_depth = state["metadata"]["cell_depth"]
     min_d = d - max_sep
     max_d = d + max_sep
     max_angular_sep = (max_sep*conv.rad_to_deg)/d
@@ -88,7 +97,7 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group, debug_
         AND dec > %f AND dec < %f
         AND pmra > %f AND pmra < %f
         AND pmdec > %f AND pmdec < %f''' % (
-            columns_to_fetch, where,
+            state["columns_to_fetch"], where,
             min_d, max_d, min_ra, max_ra, min_dec,
             max_dec, pmra_ang_vel_min, pmra_ang_vel_max,
             pmdec_ang_vel_min, pmdec_ang_vel_max
@@ -99,7 +108,7 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group, debug_
 
     neighbour_cells_to_include = []
     if get_neighbour_databases != None:
-        neighbour_cells_to_include = get_neighbour_databases(ra, dec, d, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
+        neighbour_cells_to_include = get_neighbour_databases(ra, dec, d, cell_depth, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
 
     for n in neighbour_cells_to_include:
         nconn = db_connection_cache.get(n, state["open_connections"])
@@ -145,22 +154,21 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group, debug_
     resulting_stars = found_comoving_stars.copy()
     for idx, fcs in enumerate(found_comoving_stars):
         cms_database_cursor = found_comoving_stars_database_cursors[idx]
-        comoving_to_comoving = find_comoving_to_star(fcs, cms_database_cursor, state, in_current_group, debug_print_found,
-                      max_sep, max_vel_angle_diff, max_vel_mag_diff,
-                      get_neighbour_databases)
+        comoving_to_comoving = find_comoving_to_star(fcs, cms_database_cursor, state, in_current_group)
         resulting_stars.extend(comoving_to_comoving)
 
     return resulting_stars
 
-def find(db_filename, state, debug_print_found,
-                             max_sep, max_vel_angle_diff, max_vel_mag_diff,
-                             get_neighbour_databases):
+def find(db_filename, state):
     db_connection_cache.remove_unused(state["open_connections"])
+    columns = state["metadata"]["columns"]
+    i_source_id = columns.index("source_id")
     comoving_groups = state["comoving_groups"]
     star_sid_to_comoving_group_idx = state["star_sid_to_comoving_group_idx"]
     conn = db_connection_cache.get(db_filename, state["open_connections"])
     c = conn.cursor()
-    all_stars = c.execute("SELECT %s FROM gaia" % columns_to_fetch).fetchall()
+    all_stars_select_str = "SELECT %s FROM gaia" % state["columns_to_fetch"]
+    all_stars = c.execute(all_stars_select_str).fetchall()
 
     for s in all_stars:
         if star_sid_to_comoving_group_idx.get(s[i_source_id]) != None: # Already processed
@@ -169,9 +177,7 @@ def find(db_filename, state, debug_print_found,
         in_group = set()
         in_group.add(s[i_source_id])
 
-        comoving_group = find_comoving_to_star(s, c, state, in_group, debug_print_found,
-                          max_sep, max_vel_angle_diff, max_vel_mag_diff,
-                          get_neighbour_databases)
+        comoving_group = find_comoving_to_star(s, c, state, in_group)
 
         if len(comoving_group) == 0:
             continue
@@ -186,10 +192,11 @@ def find(db_filename, state, debug_print_found,
 
         comoving_groups.append(group_obj)
 
-        if debug_print_found:
+        if state["debug_print_found"]:
             print("Found comoving group of size %d" % len(comoving_group))
 
 def save_result(state):
+    metadata = state["metadata"]
     comoving_groups_to_output = []
     comoving_groups = state["comoving_groups"]
     group_id = 0 # only unique inside each comoving-groups file
@@ -200,7 +207,14 @@ def save_result(state):
 
     output_name = datetime.datetime.now().strftime("comoving-groups-%Y-%m-%d-%H-%M-%S.txt")
     file = open(output_name,"w")
-    file.write(str(comoving_groups_to_output))
+
+    for k,v in metadata.items():
+        file.write("%s:%s\n" % (k, str(v)))
+
+    file.write("max_sep:%d\n" % state["max_sep"])
+    file.write("max_vel_angle_diff:%d\n" % state["max_vel_angle_diff"])
+    file.write("max_vel_mag_diff:%d\n" % state["max_vel_mag_diff"])
+    file.write("groups:%s" % str(comoving_groups_to_output))
     file.close()
 
     print("Result saved to %s" % output_name)

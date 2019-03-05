@@ -6,7 +6,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import utils_str
-import gaia_columns
+import comoving_groups
 from statistics import mean
 
 def verify_arguments():
@@ -23,24 +23,23 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_list.py file id"
 input_filename = sys.argv[1]
-input_fh = open(input_filename, 'rb')
-found_pairs = eval(input_fh.read())
-input_fh.close()
-assert type(found_pairs) is list, "Supplied file has broken format"
+cg = comoving_groups.read(input_filename)
 
 input_id = int(sys.argv[2])
 
-i_source_id = gaia_columns.index("source_id")
-i_ra = gaia_columns.index("ra")
-i_dec = gaia_columns.index("dec")
-i_pmra = gaia_columns.index("pmra")
-i_pmdec = gaia_columns.index("pmdec")
-i_radial_velocity = gaia_columns.index("radial_velocity")
-i_distance = gaia_columns.index("distance")
-i_phot_g_mean_mag = gaia_columns.index("phot_g_mean_mag")
+cols = cg["columns"]
+i_source_id = cols.index("source_id")
+i_ra = cols.index("ra")
+i_dec = cols.index("dec")
+i_pmra = cols.index("pmra")
+i_pmdec = cols.index("pmdec")
+i_radial_velocity = cols.index("radial_velocity")
+i_distance = cols.index("distance")
+i_phot_g_mean_mag = cols.index("phot_g_mean_mag")
+found_groups = cg["groups"]
 
-for fp in found_pairs:
-    if int(fp["id"]) != input_id:
+for g in found_groups:
+    if int(g["id"]) != input_id:
         continue
 
     ras = []
@@ -52,11 +51,11 @@ for fp in found_pairs:
     brightest = 1000 # mag
     dimmest = -1000 # mag
 
-    stars = fp["stars"]
+    stars = g["stars"]
     print_velocity_info = len(stars) < 10
     stars.sort(key = lambda x: x[i_phot_g_mean_mag], reverse = True)
 
-    for s in fp["stars"]:
+    for s in g["stars"]:
         sid = s[i_source_id]
         ra = s[i_ra]
         dec = s[i_dec]

@@ -16,6 +16,6 @@ def get(db_folder):
         if len(key_value_pair) != 2:
             error("metadata in %s is of incorrect format" % db_folder)
 
-        metadata_dict[key_value_pair[0]] = key_value_pair[1]
+        metadata_dict[key_value_pair[0]] = eval(key_value_pair[1])
 
     return metadata_dict

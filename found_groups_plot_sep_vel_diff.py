@@ -5,10 +5,10 @@
 import sys
 import os
 import matplotlib.pyplot as plt
-import gaia_columns
 import vec3
 import conv
 import numpy
+import comoving_groups
 
 def verify_arguments():
     if len(sys.argv) != 2:
@@ -21,39 +21,37 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_plot_sep_vel_diff.py file"
 input_filename = sys.argv[1]
-input_fh = open(input_filename, 'rb')
-found_pairs = eval(input_fh.read())
-input_fh.close()
-assert type(found_pairs) is list, "Supplied file has broken format"
+cg = comoving_groups.read(input_filename)
 
-i_source_id = gaia_columns.index("source_id")
-i_ra = gaia_columns.index("ra")
-i_dec = gaia_columns.index("dec")
-i_pmra = gaia_columns.index("pmra")
-i_pmdec = gaia_columns.index("pmdec")
-i_radial_velocity = gaia_columns.index("radial_velocity")
-i_distance = gaia_columns.index("distance")
-i_phot_g_mean_mag = gaia_columns.index("phot_g_mean_mag")
+cols = cg["columns"]
+i_source_id = cols.index("source_id")
+i_ra = cols.index("ra")
+i_dec = cols.index("dec")
+i_pmra = cols.index("pmra")
+i_pmdec = cols.index("pmdec")
+i_radial_velocity = cols.index("radial_velocity")
+i_distance = cols.index("distance")
+i_phot_g_mean_mag = cols.index("phot_g_mean_mag")
 
 seps = []
 vel_diffs = []
 
-for fp in found_pairs:
-    if fp["size"] != 2:
+for g in cg["groups"]:
+    if g["size"] != 2:
         continue
 
-    ra1 = fp["stars"][0][i_ra]
-    dec1 = fp["stars"][0][i_dec]
-    distance1 = fp["stars"][0][i_distance]
-    pmra1 = fp["stars"][0][i_pmra]
-    pmdec1 = fp["stars"][0][i_pmdec]
-    rv1 = fp["stars"][0][i_radial_velocity]
-    ra2 = fp["stars"][1][i_ra]
-    dec2 = fp["stars"][1][i_dec]
-    distance2 = fp["stars"][1][i_distance]
-    pmra2 = fp["stars"][1][i_pmra]
-    pmdec2 = fp["stars"][1][i_pmdec]
-    rv2 = fp["stars"][1][i_radial_velocity]
+    ra1 = g["stars"][0][i_ra]
+    dec1 = g["stars"][0][i_dec]
+    distance1 = g["stars"][0][i_distance]
+    pmra1 = g["stars"][0][i_pmra]
+    pmdec1 = g["stars"][0][i_pmdec]
+    rv1 = g["stars"][0][i_radial_velocity]
+    ra2 = g["stars"][1][i_ra]
+    dec2 = g["stars"][1][i_dec]
+    distance2 = g["stars"][1][i_distance]
+    pmra2 = g["stars"][1][i_pmra]
+    pmdec2 = g["stars"][1][i_pmdec]
+    rv2 = g["stars"][1][i_radial_velocity]
 
 
     pos1 = vec3.from_celestial(ra1*conv.deg_to_rad, dec1*conv.deg_to_rad, distance1)

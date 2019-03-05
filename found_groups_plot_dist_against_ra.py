@@ -5,7 +5,7 @@
 import sys
 import os
 import matplotlib.pyplot as plt
-import gaia_columns
+import comoving_groups
 import vec3
 import conv
 import numpy
@@ -23,34 +23,33 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_plot_sep_vel_diff.py file"
 input_filename = sys.argv[1]
-input_fh = open(input_filename, 'rb')
-found_pairs = eval(input_fh.read())
-input_fh.close()
-assert type(found_pairs) is list, "Supplied file has broken format"
+cg = comoving_groups.read(input_filename)
 
-i_source_id = gaia_columns.index("source_id")
-i_ra = gaia_columns.index("ra")
-i_dec = gaia_columns.index("dec")
-i_pmra = gaia_columns.index("pmra")
-i_pmdec = gaia_columns.index("pmdec")
-i_radial_velocity = gaia_columns.index("radial_velocity")
-i_distance = gaia_columns.index("distance")
-i_phot_g_mean_mag = gaia_columns.index("phot_g_mean_mag")
+cols = cg["columns"]
+i_source_id = cols.index("source_id")
+i_ra = cols.index("ra")
+i_dec = cols.index("dec")
+i_pmra = cols.index("pmra")
+i_pmdec = cols.index("pmdec")
+i_radial_velocity = cols.index("radial_velocity")
+i_distance = cols.index("distance")
+i_phot_g_mean_mag = cols.index("phot_g_mean_mag")
 
 ras = []
 dists = []
 colors = []
+found_groups = cg["groups"]
 
-for fp in found_pairs:
-    if fp["size"] < 4:
+for g in found_groups:
+    if g["size"] < 4:
         continue
 
     color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
 
-    for s in fp["stars"]:
+    for s in g["stars"]:
         ra = s[i_ra]
         dec = s[i_dec]
-        distance_proj = s[i_distance]*math.cos(dec*conv.deg_to_rad)
+        distance_proj = s[i_distance]
 
         if distance_proj > 250:
             continue

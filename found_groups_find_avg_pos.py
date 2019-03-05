@@ -7,14 +7,9 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import utils_str
-import gaia_columns
+import comoving_groups
 
 min_size = 1
-i_ra = gaia_columns.index("ra")
-i_dec = gaia_columns.index("dec")
-i_pmra = gaia_columns.index("pmra")
-i_pmdec = gaia_columns.index("pmdec")
-i_distance = gaia_columns.index("distance")
 
 def verify_arguments():
     if len(sys.argv) != 2 and len(sys.argv) != 3:
@@ -31,10 +26,15 @@ def verify_arguments():
 assert verify_arguments(), "Usage: found_groups_find_avg_pos.py file [id]"
 
 input_filename = sys.argv[1]
-input_fh = open(input_filename, 'rb')
-found_groups = eval(input_fh.read())
-input_fh.close()
-assert type(found_groups) is list, "Supplied file has broken format"
+cg = comoving_groups.read(input_filename)
+found_groups = cg["groups"]
+
+cols = cg["columns"]
+i_ra = cols.index("ra")
+i_dec = cols.index("dec")
+i_pmra = cols.index("pmra")
+i_pmdec = cols.index("pmdec")
+i_distance = cols.index("distance")
 
 found_groups.sort(key = lambda x: x["size"])
 clusters = []

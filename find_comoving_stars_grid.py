@@ -31,9 +31,6 @@ def verify_arguments():
 assert verify_arguments(), "Usage: find_comoving_stars_grid.py database_folder"
 
 db_folder = sys.argv[1]
-metadata_dict = metadata.get(db_folder)
-cell_depth = int(utils_dict.get_or_error(metadata_dict, "cell_depth", "cell_depth missing in %s metadata" % db_folder))
-
 debug_print_found = True
 max_sep = 10 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
@@ -43,7 +40,7 @@ max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km
 # cell. The current cell is specified by (ira, idec, idist), i for integer.
 # If the max/min_xxx do fall outside the cell, the neighbour is found and
 # added to a list. The list is returned at the end.
-def get_neighbour_databases(ra, dec, dist, min_d, max_d, min_ra, max_ra, min_dec, max_dec):
+def get_neighbour_databases(ra, dec, dist, cell_depth, min_d, max_d, min_ra, max_ra, min_dec, max_dec):
     ira = int(ra)
     idec = int(dec)
     idist = int(dist)
@@ -111,7 +108,8 @@ def get_neighbour_databases(ra, dec, dist, min_d, max_d, min_ra, max_ra, min_dec
     return to_add
 
 ras_done = 0
-state = find_comoving_stars_internal.init()
+state = find_comoving_stars_internal.init(db_folder, debug_print_found,
+                             max_sep, max_vel_angle_diff, max_vel_mag_diff, get_neighbour_databases)
 
 # goes through ra/dec/dist.db structure inside db_folder
 for ra_entry in os.listdir(db_folder):
@@ -148,8 +146,7 @@ for ra_entry in os.listdir(db_folder):
             # is there to pass on info to get_neighbour_databases,
             # which find_comoving_stars_internal.find calls before doing
             # any sql queries.
-            find_comoving_stars_internal.find(db_filename, state, debug_print_found,
-                             max_sep, max_vel_angle_diff, max_vel_mag_diff, get_neighbour_databases)
+            find_comoving_stars_internal.find(db_filename, state)
 
 find_comoving_stars_internal.save_result(state)
 find_comoving_stars_internal.deinit(state)

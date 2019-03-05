@@ -6,6 +6,7 @@
 import sys
 import os
 import utils_str
+import comoving_groups
 
 def verify_arguments():
     if len(sys.argv) != 2 and len(sys.argv) != 3:
@@ -21,21 +22,21 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_list.py file [size]"
 input_filename = sys.argv[1]
-input_fh = open(input_filename, 'rb')
-found_pairs = eval(input_fh.read())
-input_fh.close()
-assert type(found_pairs) is list, "Supplied file has broken format"
+cg = comoving_groups.read(input_filename)
+found_groups = cg["groups"]
 
 if len(sys.argv) == 3:
     input_size = int(sys.argv[2])
     print("id of groups with size %d:" % input_size)
-    for fp in found_pairs:
+    for fp in found_groups:
         if int(fp["size"]) == input_size:
             print(fp["id"])
 else:
     num_pairs_of_size = {}
+    total = 0
 
-    for fp in found_pairs:
+    for fp in found_groups:
+        total = total + fp["size"]
         cur_num = num_pairs_of_size.get(fp["size"])
         if cur_num == None:
             num_pairs_of_size[fp["size"]] = 1
@@ -47,3 +48,6 @@ else:
     print("------")
     for size, num in num_pairs_of_size.items():
         print("%d of size %d" % (num, size))
+
+    print()
+    print("Total: %d stars" % total)
