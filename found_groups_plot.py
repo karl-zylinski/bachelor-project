@@ -6,6 +6,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import utils_str
+import gaia_columns
 from statistics import mean
 
 def verify_arguments():
@@ -29,6 +30,14 @@ assert type(found_pairs) is list, "Supplied file has broken format"
 
 input_id = int(sys.argv[2])
 
+i_source_id = gaia_columns.index("source_id")
+i_ra = gaia_columns.index("ra")
+i_dec = gaia_columns.index("dec")
+i_pmra = gaia_columns.index("pmra")
+i_pmdec = gaia_columns.index("pmdec")
+i_radial_velocity = gaia_columns.index("radial_velocity")
+i_distance = gaia_columns.index("distance")
+i_phot_g_mean_mag = gaia_columns.index("phot_g_mean_mag")
 
 for fp in found_pairs:
     if int(fp["id"]) != input_id:
@@ -45,17 +54,17 @@ for fp in found_pairs:
 
     stars = fp["stars"]
     print_velocity_info = len(stars) < 10
-    stars.sort(key = lambda x: x[8], reverse = True)
+    stars.sort(key = lambda x: x[i_phot_g_mean_mag], reverse = True)
 
     for s in fp["stars"]:
-        sid = s[0]
-        ra = s[1]
-        dec = s[2]
-        pmra = s[4]
-        pmdec = s[5]
-        rv = s[6]
-        dist = s[7]
-        mag = s[8]
+        sid = s[i_source_id]
+        ra = s[i_ra]
+        dec = s[i_dec]
+        pmra = s[i_pmra]
+        pmdec = s[i_pmdec]
+        rv = s[i_radial_velocity]
+        dist = s[i_distance]
+        mag = s[i_phot_g_mean_mag]
         avg_ra = avg_ra + ra
         avg_dec = avg_dec + dec
         ras.append(ra)

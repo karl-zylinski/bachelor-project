@@ -7,8 +7,14 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import utils_str
+import gaia_columns
 
-min_size = 10
+min_size = 1
+i_ra = gaia_columns.index("ra")
+i_dec = gaia_columns.index("dec")
+i_pmra = gaia_columns.index("pmra")
+i_pmdec = gaia_columns.index("pmdec")
+i_distance = gaia_columns.index("distance")
 
 def verify_arguments():
     if len(sys.argv) != 2 and len(sys.argv) != 3:
@@ -52,9 +58,9 @@ for fp in found_groups:
     avg_dist = 0
 
     for s in fp["stars"]:
-        ra = s[1]
-        dec = s[2]
-        dist = s[7]
+        ra = s[i_ra]
+        dec = s[i_dec]
+        dist = s[i_distance]
         avg_ra = avg_ra + ra
         avg_dec = avg_dec + dec
         avg_dist = avg_dist + dist
@@ -64,7 +70,7 @@ for fp in found_groups:
     avg_dist = avg_dist / size
     clusters.append((gid, size, avg_ra, avg_dec, avg_dist))
 
-clusters.sort(key = lambda x: x[3])
+clusters.sort(key = lambda x: x[4])
 
 for c in clusters:
     print("id %d \t size %d \t POS(ra, dec, dist): (%f, %f, %f)" % (c[0], c[1], c[2], c[3], c[4]))

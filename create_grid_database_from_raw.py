@@ -37,6 +37,7 @@ assert verify_arguments(), "Usage: create_grid_database_from_raw.py database_dir
 db_folder = sys.argv[1]
 start_time = time.time()
 
+write_addtional_single_db = True
 # metadata is saved by create_grid_raw.py
 metadata_dict = metadata.get(db_folder)
 columns = eval(utils_dict.get_or_error(metadata_dict, "columns", "columns missing in %s metadata" % db_folder))
@@ -102,8 +103,9 @@ def import_raw_dbs(raw_db_filenames):
                 insert_counter = insert_counter + 1
 
             insertion_value_str = insertion_value_str[:-1]
-            c.execute("INSERT INTO gaia (" + insert_into_table_columns + ") VALUES %s" % insertion_value_str)
-
+            insertion_str = "INSERT INTO gaia (" + insert_into_table_columns + ") VALUES %s" % insertion_value_str
+            c.execute(insertion_str)
+            
             # Probably not needed right now
             #c.execute("CREATE INDEX index_ra ON gaia (ra)")
             #c.execute("CREATE INDEX index_dec ON gaia (dec)")

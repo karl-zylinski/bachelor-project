@@ -34,8 +34,8 @@ db_folder = sys.argv[1]
 metadata_dict = metadata.get(db_folder)
 cell_depth = int(utils_dict.get_or_error(metadata_dict, "cell_depth", "cell_depth missing in %s metadata" % db_folder))
 
-debug_print_found = False
-max_sep = 5 # maximal separation of pairs, pc
+debug_print_found = True
+max_sep = 10 # maximal separation of pairs, pc
 max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
 max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km/s
 
@@ -43,7 +43,12 @@ max_vel_mag_diff = 10 # maximal velocity difference between velocity vectors, km
 # cell. The current cell is specified by (ira, idec, idist), i for integer.
 # If the max/min_xxx do fall outside the cell, the neighbour is found and
 # added to a list. The list is returned at the end.
-def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec):
+def get_neighbour_databases(ra, dec, dist, min_d, max_d, min_ra, max_ra, min_dec, max_dec):
+    ira = int(ra)
+    idec = int(dec)
+    idist = int(dist)
+    idist_idx = int(dist / cell_depth)
+
     min_delta_depth = 0
     max_delta_depth = 0
     min_delta_ra = 0
@@ -69,7 +74,7 @@ def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, m
     if min_d < idist:
         min_delta_depth = -1
 
-    to_add = []
+    to_add = set()
 
     for delta_ra in range(min_delta_ra, max_delta_ra + 1):
         for delta_dec in range(min_delta_dec, max_delta_dec + 1):
@@ -101,7 +106,7 @@ def get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, m
                 db_name = "%s/%d/%+d/%d.db" % (db_folder, coord_ra, coord_dec, coord_dist)
 
                 if os.path.isfile(db_name):
-                    to_add.append(db_name)
+                    to_add.add(db_name)
 
     return to_add
 
@@ -137,9 +142,6 @@ for ra_entry in os.listdir(db_folder):
             if not db.endswith(".db"):
                 continue
 
-            idist_idx = utils_str.to_int(utils_path.remove_extension(db))
-            assert idist_idx != None, ".db file should have only numeric distance in name"
-            idist = idist_idx * cell_depth
             db_filename = "%s/%s" % (ra_dec_folder, db)
 
             # Runs the meat of the comoving-star-finder. The big lambda
@@ -147,8 +149,7 @@ for ra_entry in os.listdir(db_folder):
             # which find_comoving_stars_internal.find calls before doing
             # any sql queries.
             find_comoving_stars_internal.find(db_filename, state, debug_print_found,
-                             max_sep, max_vel_angle_diff, max_vel_mag_diff,
-                             lambda min_d, max_d, min_ra, max_ra, min_dec, max_dec: get_neighbour_databases(ira, idec, idist, idist_idx, min_d, max_d, min_ra, max_ra, min_dec, max_dec))
+                             max_sep, max_vel_angle_diff, max_vel_mag_diff, get_neighbour_databases)
 
 find_comoving_stars_internal.save_result(state)
 find_comoving_stars_internal.deinit(state)
