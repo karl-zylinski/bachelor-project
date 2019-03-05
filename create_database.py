@@ -1,12 +1,8 @@
 # Author: Karl Zylinski, Uppsala University
 
-# The purpose os of the file is to take gaia data and split it into segments.
-# Stars with the same integer part of ra and dec are grouped into a segment,
-# each segment is a list of cells where each cell has depth governed by cell_depth.
-
-# Stars are written to .raw_db files, these are later, by other scripts,
-# processed into .db files, one for each cell (i.e. each .db file  is associtaed
-# with a unique comibination of (ra, dec, distance).
+# The purpose of the file is to take gaia data and split it into cells
+# each cell is given by (int(ra), int(dec), int(distance/cell_depth))
+# the resulting database can then be used to do quick lookups.
 
 import time
 import os
