@@ -1,19 +1,17 @@
 # Author: Karl Zylinski, Uppsala University
 
-# Plots the stars found in a group in a [ra, dec] diagram with G mag as color
+# Plots separation agsinst velocity difference
 
 import sys
 import os
 import matplotlib.pyplot as plt
-import utils_str
+import vec3
+import conv
+import numpy
 import comoving_groups
-from statistics import mean
 
 def verify_arguments():
-    if len(sys.argv) != 3:
-        return False
-
-    if utils_str.to_int(sys.argv[2]) == None:
+    if len(sys.argv) < 4:
         return False
 
     if not os.path.isfile(sys.argv[1]):
@@ -21,78 +19,37 @@ def verify_arguments():
 
     return True
 
-assert verify_arguments(), "Usage: found_groups_list.py file id"
+assert verify_arguments(), "Usage: found_groups_hist.py file col1 col2 option"
 input_filename = sys.argv[1]
+col1 = sys.argv[2]
+col2 = sys.argv[3]
+
+option = None
+if len(sys.argv) == 5:
+    option = sys.argv[4]
+
 cg = comoving_groups.read(input_filename)
 
-input_id = int(sys.argv[2])
-
 cols = cg["columns"]
-i_source_id = cols.index("source_id")
-i_ra = cols.index("ra")
-i_dec = cols.index("dec")
-i_pmra = cols.index("pmra")
-i_pmdec = cols.index("pmdec")
-i_radial_velocity = cols.index("radial_velocity")
-i_distance = cols.index("distance")
-i_phot_g_mean_mag = cols.index("phot_g_mean_mag")
-found_groups = cg["groups"]
+i_col1 = cols.index(col1)
+i_col2 = cols.index(col2)
 
-for g in found_groups:
-    if int(g["id"]) != input_id:
-        continue
+data_col1 = []
+data_col2 = []
 
-    ras = []
-    decs = []
-    mags = []
-    dists = []
-    avg_ra = 0
-    avg_dec = 0
-    brightest = 1000 # mag
-    dimmest = -1000 # mag
-
-    stars = g["stars"]
-    print_velocity_info = len(stars) < 10
-    stars.sort(key = lambda x: x[i_phot_g_mean_mag], reverse = True)
-
+for g in cg["groups"]:
     for s in g["stars"]:
-        sid = s[i_source_id]
-        ra = s[i_ra]
-        dec = s[i_dec]
-        pmra = s[i_pmra]
-        pmdec = s[i_pmdec]
-        rv = s[i_radial_velocity]
-        dist = s[i_distance]
-        mag = s[i_phot_g_mean_mag]
-        avg_ra = avg_ra + ra
-        avg_dec = avg_dec + dec
-        ras.append(ra)
-        decs.append(dec)
-        mags.append(mag)
-        dists.append(dist)
-        if mag > dimmest:
-            dimmest = mag
-        if mag < brightest:
-            brightest = mag
+        if s[i_col1] == None or s[i_col2] == None:
+            continue
 
-        if print_velocity_info:
-            print("Velocity of %d (pmra, pmdec, rv): (%f, %f, %f)" % (sid, pmra, pmdec, rv))
+        data_col1.append(s[i_col1])
+        data_col2.append(s[i_col2])
 
-    avg_ra = mean(ras)
-    avg_dec = mean(decs)
-    avg_dist = mean(dists)
-    print("Average pos (ra, dec, dist): (%f, %f, %f)" % (avg_ra, avg_dec, avg_dist))
+plt.plot(data_col1, data_col2, ".", markersize=5)
+plt.xlabel(col1)
+plt.ylabel(col2)
 
-    sizes = []
-
-    for m in mags:
-        mn = (m - brightest)/(dimmest-brightest)
-        sizes.append(((1-mn) + 0.25) * 100)
-
-    cm = plt.cm.get_cmap('RdYlBu')
-    sc = plt.scatter(ras, decs, c=mags, vmin=dimmest, vmax=brightest, s=sizes, cmap=cm)
-    plt.colorbar(sc)
-    plt.xlabel("ra")
-    plt.ylabel("dec")
-    plt.show()
-    exit()
+if option == "log":
+    plt.xscale("log")
+    plt.yscale("log")
+plt.show()

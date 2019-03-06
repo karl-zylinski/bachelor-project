@@ -58,7 +58,7 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group):
     ra = s[i_ra] # deg
     dec = s[i_dec] # deg
     pmra = s[i_pmra] # mas/yr
-    pmdec = s[i_pmra] # mas/yr
+    pmdec = s[i_pmdec] # mas/yr
     vrad = s[i_radial_velocity] # km/s
     d = s[i_distance] # distance in pc
     cell_depth = state["metadata"]["cell_depth"]
