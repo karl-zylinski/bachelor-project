@@ -51,7 +51,7 @@ for g in found_groups:
         dec = s[i_dec]
         distance_proj = s[i_distance]
 
-        if distance_proj > 250:
+        if distance_proj > 500:
             continue
 
         ras.append(ra*conv.deg_to_rad)
