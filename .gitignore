@@ -18,3 +18,4 @@ db_gaia_dr2*
 __pycache__
 *.iso.cmd
 temp/
+galah_sids.txt
