@@ -13,7 +13,7 @@ import datetime
 import db_connection_cache
 import metadata
 
-def init(db_folder, debug_print_found, max_sep, max_vel_angle_diff,
+def init(db_folder, debug_print_found, max_sep,
          max_vel_mag_diff, get_neighbour_databases):
     metadata_dict = metadata.get(db_folder)
     state = {}
@@ -22,7 +22,6 @@ def init(db_folder, debug_print_found, max_sep, max_vel_angle_diff,
     state["columns_to_fetch"] = ",".join(metadata_dict["columns"])
     state["debug_print_found"] = debug_print_found
     state["max_sep"] = max_sep
-    state["max_vel_angle_diff"] = max_vel_angle_diff
     state["max_vel_mag_diff"] = max_vel_mag_diff
     state["get_neighbour_databases"] = get_neighbour_databases
     state["stars_done"] = 0
@@ -46,7 +45,6 @@ def deinit(state):
 #    of the comoving.
 def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     max_sep = state["max_sep"]
-    max_vel_angle_diff = state["max_vel_angle_diff"]
     max_vel_mag_diff = state["max_vel_mag_diff"]
     get_neighbour_databases = state["get_neighbour_databases"]
 
@@ -138,8 +136,6 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     pmra_rad_per_s = pmra * conv.mas_per_yr_to_rad_per_s
     pmdec_rad_per_s = pmdec * conv.mas_per_yr_to_rad_per_s
     vel = vec3.from_celestial(pmra_rad_per_s, pmdec_rad_per_s, vrad) # km/s
-    speed = vec3.len(vel)
-    vel_dir = vec3.scale(vel, 1/speed)
     found_comoving_stars = []
     found_comoving_stars_sids = []
     found_comoving_stars_database_cursors = []
@@ -148,13 +144,10 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
         mcs_pmdec_rad_per_s = mcs[i_pmdec] * conv.mas_per_yr_to_rad_per_s
         mcs_vrad = mcs[i_radial_velocity] #km/s
         mcs_vel = vec3.from_celestial(mcs_pmra_rad_per_s, mcs_pmdec_rad_per_s, mcs_vrad) # km/s
-        mcs_speed = vec3.len(mcs_vel)
-        mcs_vel_dir = vec3.scale(mcs_vel, 1/mcs_speed)
-        s_mcs_dot = vec3.dot(mcs_vel_dir, vel_dir)
-        s_mcs_angle = math.acos(s_mcs_dot)
+        vel_vec_diff = vec3.sub(mcs_vel, vel)
         
-        # Only keep stars within velocity angle separation limit and below speed limit.
-        if (s_mcs_angle * conv.rad_to_deg) < max_vel_angle_diff and math.fabs(mcs_speed - speed) < max_vel_mag_diff:
+        # Only keep stars within velocity limit
+        if vec3.len(vel_vec_diff) < max_vel_mag_diff:
             found_comoving_stars.append(mcs)
             found_comoving_stars_database_cursors.append(maybe_comoving_stars_database_cursors[idx])
             found_comoving_stars_sids.append(mcs[i_source_id])
@@ -230,7 +223,6 @@ def save_result(state):
         file.write("%s:%s\n" % (k, str(v)))
 
     file.write("max_sep:%d\n" % state["max_sep"])
-    file.write("max_vel_angle_diff:%d\n" % state["max_vel_angle_diff"])
     file.write("max_vel_mag_diff:%d\n" % state["max_vel_mag_diff"])
     file.write("groups:%s" % str(comoving_groups_to_output))
     file.close()

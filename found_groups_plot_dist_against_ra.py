@@ -41,7 +41,7 @@ colors = []
 found_groups = cg["groups"]
 
 for g in found_groups:
-    if g["size"] < 4:
+    if g["size"] < 3:
         continue
 
     color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
@@ -50,9 +50,6 @@ for g in found_groups:
         ra = s[i_ra]
         dec = s[i_dec]
         distance_proj = s[i_distance]
-
-        if distance_proj > 500:
-            continue
 
         ras.append(ra*conv.deg_to_rad)
         dists.append(distance_proj)

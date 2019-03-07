@@ -32,9 +32,8 @@ assert verify_arguments(), "Usage: find_comoving_stars_grid.py database_folder"
 
 db_folder = sys.argv[1]
 debug_print_found = True
-max_sep = 5 # maximal separation of pairs, pc
-max_vel_angle_diff = 1 # maximal angular difference of velocity vectors, degrees
-max_vel_mag_diff = 5 # maximal velocity difference between velocity vectors, km/s
+max_sep = 10 # maximal separation of pairs, pc
+max_vel_mag_diff = 1 # maximal magnitude of difference between velocity vectors, km/s
 
 # This uses the max/min_xxx variables to look if those fall outside the current
 # cell. The current cell is specified by (ira, idec, idist), i for integer.
@@ -109,7 +108,7 @@ def get_neighbour_databases(ra, dec, dist, cell_depth, min_d, max_d, min_ra, max
 
 ras_done = 0
 state = find_comoving_stars_internal.init(db_folder, debug_print_found,
-                             max_sep, max_vel_angle_diff, max_vel_mag_diff, get_neighbour_databases)
+                                          max_sep, max_vel_mag_diff, get_neighbour_databases)
 
 # goes through ra/dec/dist.db structure inside db_folder
 for ra_entry in os.listdir(db_folder):
