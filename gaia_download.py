@@ -1,4 +1,4 @@
-# Author: Karl Zylinski
+# Author: Karl Zylinski, Uppsala University
 
 # Downloads Gaia DR2 (or some flavour of it)
 

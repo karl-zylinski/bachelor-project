@@ -1,3 +1,5 @@
+# Author: Karl Zylinski, Uppsala University
+
 import math
 import conv
 

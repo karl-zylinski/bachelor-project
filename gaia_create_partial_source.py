@@ -1,4 +1,4 @@
-# Author: Karl Zylinski
+# Author: Karl Zylinski, Uppsala University
 
 # Takes a random sample from source_dir and throws it into source_partial_dir
 

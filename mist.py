@@ -1,17 +1,17 @@
-# Author: Karl Zylinski
+# Author: Karl Zylinski, Uppsala University
 
 # Tools for working with MIST isochrones
 
 from functools import reduce
 
-def is_comment(line):
+def _is_comment(line):
     for c in line:
         if not c.isspace():
             return c == "#"
 
     return False
 
-def is_whitespace(line):
+def _is_whitespace(line):
     for c in line:
         if not c.isspace():
             return False
@@ -29,7 +29,7 @@ def parse_isochrones(path):
     cur_age = -1
 
     while line:
-        if len(line) == 0 or is_whitespace(line) or is_comment(line):
+        if len(line) == 0 or _is_whitespace(line) or _is_comment(line):
             line = fh.readline()
             continue
 

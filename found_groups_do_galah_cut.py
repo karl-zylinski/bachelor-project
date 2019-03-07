@@ -1,4 +1,4 @@
-# Author: Karl Zylinski
+# Author: Karl Zylinski, Uppsala University
 
 # Cuts out the part of a comoving-groups-file that overlaps with GALAH spatially.
 # I.e. keeps only |b| > 10 and dec < 10

@@ -1,4 +1,4 @@
-#Author: Karl Zylinski, Uppsala University
+# Author: Karl Zylinski, Uppsala University
 
 # Compares lines of two different files, seeing if the lines exist in both (does
 # not need to be in the same order)

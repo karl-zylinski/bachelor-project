@@ -4,6 +4,8 @@
 # each cell is given by (int(ra), int(dec), int(distance/cell_depth))
 # the resulting database can then be used to do quick lookups.
 
+# Also creates a single-file-db if create_additional_single_db is True.
+
 import time
 import os
 import datetime

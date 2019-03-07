@@ -1,3 +1,5 @@
+# Author: Karl Zylinski, Uppsala University
+
 # metadata for raw_db
 
 import os

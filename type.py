@@ -1,3 +1,7 @@
+# Author: Karl Zylinski
+
+# For the file specified, output the number of bytes specified.
+
 import os
 import sys
 

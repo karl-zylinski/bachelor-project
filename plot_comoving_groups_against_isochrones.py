@@ -1,3 +1,8 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Takes a bunch of MIST isochrones and plots them at the age specified. Then overlays
+# stars from a comoving-groups-file.
+
 import sys
 import os
 import numpy

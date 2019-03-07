@@ -1,4 +1,4 @@
-# Author: Karl Zylinski
+# Author: Karl Zylinski, Uppsala University
 
 # Goes into sqlite3 databases of Gaia stars and finds comoving ones.
 # Called from other scripts (such as find_comoving_stars_grid.py)
