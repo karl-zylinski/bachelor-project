@@ -1,14 +1,30 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Keeps a bunch of sqlite3 databases going at the same time, with functions
+# to close those that hasn't been used for a while.
+
 import sqlite3
 
 memory_map_size = 10000000
 db_access_counter = 0
 db_access_cleanse_peroid = 10000
 db_access_counter_next_cleanse = db_access_cleanse_peroid
+db_single = None
 
 def set_memory_map_size(s):
+    global memory_map_size
     memory_map_size = s
 
 def get(db_name, open_connections):
+    global db_single
+
+    if open_connections == None:
+        if db_single == None:
+            db_single = sqlite3.connect(db_name)
+            db_single.execute('pragma mmap_size=%d;' % memory_map_size)
+
+        return db_single
+
     global db_access_counter
     db_access_counter = db_access_counter + 1
     existing = open_connections.get(db_name)
@@ -26,6 +42,9 @@ def get(db_name, open_connections):
         return conn
 
 def remove_unused(open_connections):
+    if open_connections == None:
+        return
+
     global db_access_counter_next_cleanse
 
     if db_access_counter < db_access_counter_next_cleanse:
@@ -45,6 +64,10 @@ def remove_unused(open_connections):
         del open_connections[r]
 
 def remove_all(open_connections):
+    if open_connections == None and db_single != None:
+        db_single.close()
+        return
+
     for db_name, c in open_connections.items():
         c["conn"].commit()
         c["conn"].close()

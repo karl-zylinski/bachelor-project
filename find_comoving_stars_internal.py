@@ -1,9 +1,9 @@
 # Author: Karl Zylinski
 
-# Goes into an sqlite3 database of Gaia stars and finds comoving ones.
+# Goes into sqlite3 databases of Gaia stars and finds comoving ones.
 # Called from other scripts (such as find_comoving_stars_grid.py)
 # The data is returned back to the calling script via the state variable
-# passed to function find. See function setup_state.
+# passed to function find. See function init.
 
 import sqlite3
 import vec3
@@ -28,13 +28,23 @@ def init(db_folder, debug_print_found, max_sep, max_vel_angle_diff,
     state["stars_done"] = 0
     state["comoving_groups"] = [] # index is pair identifier, each entry is an array of stars
     state["star_sid_to_comoving_group_idx"] = {} # maps star source_id to comoving_groups index, for checking for redundancies
-    state["open_connections"] = {} # keeps track of database connections
+
+    if get_neighbour_databases == None:
+        state["open_connections"] = None
+    else:
+        state["open_connections"] = {} # keeps track of database connections
     return state
 
 def deinit(state):
     db_connection_cache.remove_all(state["open_connections"])
 
-def find_comoving_to_star(star, database_cursor, state, in_current_group):
+# 1. Finds stars with similar position and velocity as this one.
+# 2. Also looks in neighbouring cells if close to cell wall.
+# 3. A more precise 3D velocity comparsion is done, in addition to the
+#    purley tangentaial done in the SQL selection.
+# 4. For any found comoving star, this function is re-run, to find comoving
+#    of the comoving.
+def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     max_sep = state["max_sep"]
     max_vel_angle_diff = state["max_vel_angle_diff"]
     max_vel_mag_diff = state["max_vel_mag_diff"]
@@ -71,7 +81,7 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group):
     max_dec = dec + max_angular_sep
 
     # this is a mas/yr value that corresponds to angular value for tangential speed max_vel_mag_diff/2 for this star
-    ang_vel_diff = (max_vel_mag_diff/2) / (conv.parsec_to_km * d * conv.mas_per_yr_to_rad_per_s)
+    ang_vel_diff = max_vel_mag_diff / (conv.parsec_to_km * d * conv.mas_per_yr_to_rad_per_s)
 
     pmra_ang_vel_min = pmra - ang_vel_diff
     pmra_ang_vel_max = pmra + ang_vel_diff
@@ -106,6 +116,8 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group):
     maybe_comoving_stars = database_cursor.execute(find_nearby_query).fetchall()
     maybe_comoving_stars_database_cursors = [database_cursor] * len(maybe_comoving_stars)
 
+    # This is for gridded database, we might be near edge of cell but want to look in
+    # neighbour cells. The provided get_neighbour_databases is assumed find those cells
     neighbour_cells_to_include = []
     if get_neighbour_databases != None:
         neighbour_cells_to_include = get_neighbour_databases(ra, dec, d, cell_depth, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
@@ -152,13 +164,19 @@ def find_comoving_to_star(star, database_cursor, state, in_current_group):
 
     in_current_group.update(found_comoving_stars_sids)
     resulting_stars = found_comoving_stars.copy()
+
+    # This recursively runs this function for the stars comoving to the
+    # current one, to see if there are any comoving to that one
     for idx, fcs in enumerate(found_comoving_stars):
         cms_database_cursor = found_comoving_stars_database_cursors[idx]
-        comoving_to_comoving = find_comoving_to_star(fcs, cms_database_cursor, state, in_current_group)
+        comoving_to_comoving = _find_comoving_to_star(fcs, cms_database_cursor, state, in_current_group)
         resulting_stars.extend(comoving_to_comoving)
 
     return resulting_stars
 
+# Goes through a database and runs _find_comoving_to_star for all stars in it.
+# Also adds the result of _find_comoving_to_star to the comoving_groups variable
+# living in the state dictionary.
 def find(db_filename, state):
     db_connection_cache.remove_unused(state["open_connections"])
     columns = state["metadata"]["columns"]
@@ -177,7 +195,7 @@ def find(db_filename, state):
         in_group = set()
         in_group.add(s[i_source_id])
 
-        comoving_group = find_comoving_to_star(s, c, state, in_group)
+        comoving_group = _find_comoving_to_star(s, c, state, in_group)
 
         if len(comoving_group) == 0:
             continue

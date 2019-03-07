@@ -42,7 +42,7 @@ for g in cg["groups"]:
         dec = s[i_dec]
         assert b != None and dec != None
 
-        if abs(b) > 9 and dec < 11:
+        if abs(b) > 9 and dec < 11: # do 1 deg more just to be safe
             kept = kept + 1
             out_sids.append(str(sid))
 

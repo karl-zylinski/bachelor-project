@@ -1,3 +1,7 @@
+# Author: Karl Zylinski, Uppsala University
+
+# Reads an output-file from the find_comoving_stars* scripts, puts it into a dictionary
+
 import os
 
 def read(filename):
