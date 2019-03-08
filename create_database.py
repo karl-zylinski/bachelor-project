@@ -61,8 +61,8 @@ os.mkdir(dest_dir)
 assert(len(gaia_columns.columns) == len(gaia_columns.data_types))
 
 # add extra columns not in gaia source
-extra_columns = ["distance"]
-extra_coumns_data_type = ["real"]
+extra_columns = ["distance", "distance_error"]
+extra_coumns_data_type = ["real", "real"]
 
 all_columns = gaia_columns.columns + extra_columns
 all_columns_data_types = gaia_columns.data_types + extra_coumns_data_type
@@ -80,6 +80,7 @@ metadata_fh.write("columns_datatypes:%s" % str(all_columns_data_types))
 metadata_fh.close()
 
 parallax_idx = gaia_columns.index("parallax")
+parallax_error_idx = gaia_columns.index("parallax_error")
 parallax_over_error_idx = gaia_columns.index("parallax_over_error")
 ra_idx = gaia_columns.index("ra")
 pmra_idx = gaia_columns.index("pmra")
@@ -90,13 +91,14 @@ pmdec_error_idx = gaia_columns.index("pmdec_error")
 radial_velocity_idx = gaia_columns.index("radial_velocity")
 radial_velocity_error_idx = gaia_columns.index("radial_velocity_error")
 distance_idx = all_columns.index("distance")
+distance_error_idx = all_columns.index("distance_error")
 
 create_table_columns = ""
 
 # create the columns string you'd send to a CREATE TABLE command in sql
 for i in range(0, len(all_columns)):
     col_title = all_columns[i]
-    col_data_type = all_columns[i]
+    col_data_type = all_columns_data_types[i]
     create_table_columns += col_title + " " + col_data_type + ","
 
 create_table_str = "CREATE TABLE gaia (" + create_table_columns[:-1] + ")"
@@ -176,7 +178,7 @@ def write_star(ra, dec, dist, data):
     cell_db_filename = "%s/%d.db" % (segment_dir, dist_idx)
 
     new_db = not os.path.isfile(cell_db_filename)
-    c = db_connection_cache.get(cell_db_filename, open_connections, total_counter)
+    c = db_connection_cache.get(cell_db_filename, open_connections)
 
     if new_db:
         c.execute(create_table_str)
@@ -211,25 +213,30 @@ for file in os.listdir(source_dir):
         # throws in all columns that we take from Gaia as-is (compared to distance, calculated below)
         for idx, val in enumerate(source_values):
             dt = gaia_columns.data_types[idx]
+            stripped_val = val.strip() # remove spaces and linebreaks!
 
-            if val == "" or val == "\n":
+            if stripped_val == "":
                 dest_values[idx] = "NULL"
             elif dt == "text":
-                dest_values[idx] = "\"%s\"" % val
+                dest_values[idx] = "\"%s\"" % stripped_val
             elif dt == "integer" and val == "false":
                 dest_values[idx] = "0"
             elif dt == "integer" and val == "true":
                 dest_values[idx] = "1"
             else:
-                dest_values[idx] = val
+                dest_values[idx] = stripped_val
 
         # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
-        distance = 1.0/(float(dest_values[parallax_idx])/1000.0)
+        parallax = float(dest_values[parallax_idx])
+        parallax_error = float(dest_values[parallax_error_idx])
+        distance = 1.0/(parallax/1000.0)
+        distance_error = 1000*(parallax_error/(parallax*parallax)) # by error propagation of d = 1000/p (p in mas)
 
         if distance < min_dist or distance > max_dist:
             continue
 
         dest_values[distance_idx] = str(distance)
+        dest_values[distance_error_idx] = str(distance_error)
 
         ra = float(dest_values[ra_idx])
         dec = float(dest_values[dec_idx])
@@ -240,8 +247,7 @@ for file in os.listdir(source_dir):
         if total_counter % 1000 == 0:
             print("%d done" % total_counter)
 
-        if total_counter % 10000 == 0:
-            db_connection_cache.remove_unused(open_connections, total_counter)
+        db_connection_cache.remove_unused(open_connections)
     
     file_counter = file_counter + 1
     print("Written to grid for csv: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))

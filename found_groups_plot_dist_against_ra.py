@@ -41,18 +41,21 @@ colors = []
 found_groups = cg["groups"]
 
 for g in found_groups:
-    if g["size"] < 3:
-        continue
+    #if g["size"] < 3:
+    #    continue
 
     color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
 
     for s in g["stars"]:
         ra = s[i_ra]
         dec = s[i_dec]
-        distance_proj = s[i_distance]
+        distance = s[i_distance]
+
+        if distance > 500:
+            continue
 
         ras.append(ra*conv.deg_to_rad)
-        dists.append(distance_proj)
+        dists.append(distance)
         colors.append(color)
 
 for i in range(0, len(ras)):

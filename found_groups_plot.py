@@ -19,7 +19,7 @@ def verify_arguments():
 
     return True
 
-assert verify_arguments(), "Usage: found_groups_hist.py file col1 col2 option"
+assert verify_arguments(), "Usage: found_groups_plot.py file col1 col2 option"
 input_filename = sys.argv[1]
 col1 = sys.argv[2]
 col2 = sys.argv[3]

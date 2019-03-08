@@ -51,11 +51,17 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     columns = state["metadata"]["columns"]
     i_source_id = columns.index("source_id")
     i_pmra = columns.index("pmra")
+    i_pmra_error = columns.index("pmra_error")
     i_pmdec = columns.index("pmdec")
+    i_pmdec_error = columns.index("pmdec_error")
     i_ra = columns.index("ra")
+    i_ra_error = columns.index("ra_error")
     i_dec = columns.index("dec")
+    i_dec_error = columns.index("dec_error")
     i_radial_velocity = columns.index("radial_velocity")
+    i_radial_velocity_error = columns.index("radial_velocity_error")
     i_distance = columns.index("distance")
+    i_distance_error = columns.index("distance")
 
     s = star
     sid = s[i_source_id]
@@ -68,6 +74,12 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     pmra = s[i_pmra] # mas/yr
     pmdec = s[i_pmdec] # mas/yr
     vrad = s[i_radial_velocity] # km/s
+
+    pmra_error = s[i_pmra_error]
+    pmdec_error = s[i_pmdec_error]
+    radial_velocity_error = s[i_radial_velocity_error]
+
+    diff_limit_km_per_year = max_vel_mag_diff / conv.sec_to_year
     d = s[i_distance] # distance in pc
     cell_depth = state["metadata"]["cell_depth"]
     min_d = d - max_sep
@@ -133,21 +145,26 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     # Now we want to compare velocity direction and magnitude with each found nearby star
     # all proper motions are converted into rad/s and celestial velocity is converted to
     # cartesian vector with unit km/s.
-    pmra_rad_per_s = pmra * conv.mas_per_yr_to_rad_per_s
-    pmdec_rad_per_s = pmdec * conv.mas_per_yr_to_rad_per_s
-    vel = vec3.from_celestial(pmra_rad_per_s, pmdec_rad_per_s, vrad) # km/s
+    pmra_deg_per_year = pmra * conv.mas_to_deg
+    pmdec_deg_per_year = pmdec * conv.mas_to_deg
+    vrad_km_per_year = vrad / conv.sec_to_year
+    vel_km_per_year = vec3.cartesian_velocity_from_celestial(ra, dec, d, pmra_deg_per_year, pmdec_deg_per_year, vrad_km_per_year) # km/s
     found_comoving_stars = []
     found_comoving_stars_sids = []
     found_comoving_stars_database_cursors = []
     for idx, mcs in enumerate(maybe_comoving_stars):
-        mcs_pmra_rad_per_s = mcs[i_pmra] * conv.mas_per_yr_to_rad_per_s
-        mcs_pmdec_rad_per_s = mcs[i_pmdec] * conv.mas_per_yr_to_rad_per_s
-        mcs_vrad = mcs[i_radial_velocity] #km/s
-        mcs_vel = vec3.from_celestial(mcs_pmra_rad_per_s, mcs_pmdec_rad_per_s, mcs_vrad) # km/s
-        vel_vec_diff = vec3.sub(mcs_vel, vel)
+        mcs_ra = mcs[i_ra]
+        mcs_dec = mcs[i_dec]
+        mcs_d = mcs[i_distance]
+        mcs_pmra_deg_per_year = mcs[i_pmra] * conv.mas_to_deg
+        mcs_pmdec_deg_per_year = mcs[i_pmdec] * conv.mas_to_deg
+        mcs_vrad_km_per_year = mcs[i_radial_velocity] / conv.sec_to_year #km/s
+        mcs_vel_km_per_year = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_d, mcs_pmra_deg_per_year, mcs_pmdec_deg_per_year, mcs_vrad_km_per_year) # km/s
+        vel_vec_diff_km_per_year = vec3.sub(mcs_vel_km_per_year, vel_km_per_year)
+        speed_km_per_year = vec3.len(vel_vec_diff_km_per_year) 
         
         # Only keep stars within velocity limit
-        if vec3.len(vel_vec_diff) < max_vel_mag_diff:
+        if speed_km_per_year < diff_limit_km_per_year:
             found_comoving_stars.append(mcs)
             found_comoving_stars_database_cursors.append(maybe_comoving_stars_database_cursors[idx])
             found_comoving_stars_sids.append(mcs[i_source_id])
