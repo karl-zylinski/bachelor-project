@@ -4,7 +4,8 @@
 # each cell is given by (int(ra), int(dec), int(distance/cell_depth))
 # the resulting database can then be used to do quick lookups.
 
-# Also creates a single-file-db if create_additional_single_db is True.
+# Creates a single-file-db if create_single_db is True.
+# Creates a gridded db if create_gridded_db is True.
 
 import time
 import os
@@ -18,12 +19,12 @@ import gaia_columns
 import db_connection_cache
 import sqlite3
 
-cut_parallax_over_error = 10
 cut_pmra_over_error = 10
 cut_pmdec_over_error = 10
 cut_radial_velocity_over_error = 10
 
-create_additional_single_db = True # Disable if doing complete Gaia DR2
+create_single_db = True # Disable if doing complete Gaia DR2
+create_gridded_db = False
 disk_bouncing = False # DONT ENABLE, ITS BROKEN. Needed if we do full DR2
 min_dist = 0 # pc
 max_dist = 3000 # pc
@@ -69,7 +70,6 @@ all_columns_data_types = gaia_columns.data_types + extra_coumns_data_type
 
 # write metadata file
 metadata_fh = open("%s/metadata" % dest_dir, "w")
-metadata_fh.write("cut_parallax_over_error:%d\n" % cut_parallax_over_error)
 metadata_fh.write("cut_pmra_over_error:%d\n" % cut_pmra_over_error)
 metadata_fh.write("cut_pmdec_over_error:%d\n" % cut_pmdec_over_error)
 metadata_fh.write("cut_radial_velocity_over_error:%d\n" % cut_radial_velocity_over_error)
@@ -81,7 +81,6 @@ metadata_fh.close()
 
 parallax_idx = gaia_columns.index("parallax")
 parallax_error_idx = gaia_columns.index("parallax_error")
-parallax_over_error_idx = gaia_columns.index("parallax_over_error")
 ra_idx = gaia_columns.index("ra")
 pmra_idx = gaia_columns.index("pmra")
 pmra_error_idx = gaia_columns.index("pmra_error")
@@ -107,7 +106,7 @@ insert_into_table_columns = ",".join(all_columns)
 single_db_conn = None
 single_db_cursor = None
 
-if create_additional_single_db:
+if create_single_db:
     single_db_conn = sqlite3.connect("%s/%s" % (dest_dir, "single_db.db"))
     single_db_cursor = single_db_conn.cursor()
     single_db_cursor.execute('pragma mmap_size=4294967296;')
@@ -158,36 +157,32 @@ def is_valid(source_values):
         skipped_cut_radial_velocity = skipped_cut_radial_velocity + 1
         return False
 
-    # parallax error cut
-    parallax_over_error = utils_str.to_float(source_values[parallax_over_error_idx])
-    if parallax_over_error < cut_parallax_over_error:
-        skipped_cut_parallax = skipped_cut_parallax + 1
-        return False
-
     return True
 
 def write_star(ra, dec, dist, data):
-    ra_idx = int(ra)
-    dec_idx = int(dec)
-    dist_idx = int(distance/cell_depth)
-    segment_dir = "%s/%d/%+d" % (dest_dir, ra_idx, dec_idx)
-
-    if not os.path.isdir(segment_dir):
-        os.makedirs(segment_dir)
-
-    cell_db_filename = "%s/%d.db" % (segment_dir, dist_idx)
-
-    new_db = not os.path.isfile(cell_db_filename)
-    c = db_connection_cache.get(cell_db_filename, open_connections)
-
-    if new_db:
-        c.execute(create_table_str)
-
     insertion_value_str = ",".join(data)
     insertion_str = "INSERT INTO gaia (" + insert_into_table_columns + ") VALUES (%s)" % insertion_value_str
-    c.execute(insertion_str)
 
-    if create_additional_single_db:
+    if create_gridded_db:
+        ra_idx = int(ra)
+        dec_idx = int(dec)
+        dist_idx = int(distance/cell_depth)
+        segment_dir = "%s/%d/%+d" % (dest_dir, ra_idx, dec_idx)
+
+        if not os.path.isdir(segment_dir):
+            os.makedirs(segment_dir)
+
+        cell_db_filename = "%s/%d.db" % (segment_dir, dist_idx)
+
+        new_db = not os.path.isfile(cell_db_filename)
+        c = db_connection_cache.get(cell_db_filename, open_connections)
+
+        if new_db:
+            c.execute(create_table_str)
+
+        c.execute(insertion_str)
+
+    if create_single_db:
         single_db_cursor.execute(insertion_str)
 
         if total_counter % 10000 == 0:
@@ -254,7 +249,7 @@ for file in os.listdir(source_dir):
 
 db_connection_cache.remove_all(open_connections)
 
-if create_additional_single_db:
+if create_single_db:
     print("Creating single db indices")
     single_db_cursor.execute("CREATE INDEX index_ra ON gaia (ra)")
     single_db_cursor.execute("CREATE INDEX index_dec ON gaia (dec)")
@@ -273,5 +268,4 @@ print("Skipped %d because they lacked parallax" % skipped_no_parallax)
 print("Skipped %d because pmra over error was under %d" % (skipped_cut_pmra, cut_pmra_over_error))
 print("Skipped %d because pmdec over error was under %d" % (skipped_cut_pmdec, cut_pmdec_over_error))
 print("Skipped %d because radial_velocity over error was under %d" % (skipped_cut_radial_velocity, cut_radial_velocity_over_error))
-print("Skipped %d because parallax over error was under %d" % (skipped_cut_parallax, cut_parallax_over_error))
 print("Finished in " + str(int(dt)) + " seconds")

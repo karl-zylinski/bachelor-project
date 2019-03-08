@@ -25,7 +25,7 @@ debug_print_found = True
 max_sep = 10 # maximal separation of pairs, pc
 max_vel_mag_diff = 1 # maximal velocity difference between velocity vectors, km/s
 
-db_connection_cache.set_memory_map_size(4589934592)
+db_connection_cache.set_memory_map_size(8589934592)
 
 state = find_comoving_stars_internal.init(db_folder, debug_print_found, max_sep, max_vel_mag_diff, None)
 find_comoving_stars_internal.find(db_filename, state)

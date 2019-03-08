@@ -61,7 +61,7 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     i_radial_velocity = columns.index("radial_velocity")
     i_radial_velocity_error = columns.index("radial_velocity_error")
     i_distance = columns.index("distance")
-    i_distance_error = columns.index("distance")
+    i_distance_error = columns.index("distance_error")
 
     s = star
     sid = s[i_source_id]
@@ -70,33 +70,42 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
         return []
 
     ra = s[i_ra] # deg
+    ra_error = s[i_ra_error] # deg
     dec = s[i_dec] # deg
+    dec_error = s[i_dec_error] # deg
     pmra = s[i_pmra] # mas/yr
     pmdec = s[i_pmdec] # mas/yr
     vrad = s[i_radial_velocity] # km/s
 
     pmra_error = s[i_pmra_error]
     pmdec_error = s[i_pmdec_error]
-    radial_velocity_error = s[i_radial_velocity_error]
+    vrad_error = s[i_radial_velocity_error]
 
-    diff_limit_km_per_year = max_vel_mag_diff / conv.sec_to_year
+    max_vel_mag_diff_km_per_year = max_vel_mag_diff / conv.sec_to_year
     d = s[i_distance] # distance in pc
+    d_error = s[i_distance_error] # distance in pc
     cell_depth = state["metadata"]["cell_depth"]
-    min_d = d - max_sep
-    max_d = d + max_sep
-    max_angular_sep = (max_sep*conv.rad_to_deg)/d
-    min_ra = ra - max_angular_sep
-    max_ra = ra + max_angular_sep
-    min_dec = dec - max_angular_sep
-    max_dec = dec + max_angular_sep
+
+     
+    # bq means broad query, the sql query done below before finer inspection further down
+    bq_mult_pos = 2
+    bq_mult_vel = 5
+
+    max_angular_sep = (max_sep * conv.rad_to_deg)/d
+    bq_min_d = d - max_sep * bq_mult_pos
+    bq_max_d = d + max_sep * bq_mult_pos
+    bq_min_ra = ra - max_angular_sep * bq_mult_pos
+    bq_max_ra = ra + max_angular_sep * bq_mult_pos
+    bq_min_dec = dec - max_angular_sep * bq_mult_pos
+    bq_max_dec = dec + max_angular_sep * bq_mult_pos
 
     # this is a mas/yr value that corresponds to angular value for tangential speed max_vel_mag_diff/2 for this star
     ang_vel_diff = max_vel_mag_diff / (conv.parsec_to_km * d * conv.mas_per_yr_to_rad_per_s)
-
-    pmra_ang_vel_min = pmra - ang_vel_diff
-    pmra_ang_vel_max = pmra + ang_vel_diff
-    pmdec_ang_vel_min = pmdec - ang_vel_diff
-    pmdec_ang_vel_max = pmdec + ang_vel_diff
+   
+    bq_pmra_ang_vel_min = pmra - ang_vel_diff * bq_mult_vel
+    bq_pmra_ang_vel_max = pmra + ang_vel_diff * bq_mult_vel
+    bq_pmdec_ang_vel_min = pmdec - ang_vel_diff * bq_mult_vel
+    bq_pmdec_ang_vel_max = pmdec + ang_vel_diff * bq_mult_vel
 
     where = "WHERE"
 
@@ -112,15 +121,15 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
         SELECT %s
         FROM gaia
         %s
-        AND distance > %f AND distance < %f
-        AND ra > %f AND ra < %f
-        AND dec > %f AND dec < %f
-        AND pmra > %f AND pmra < %f
-        AND pmdec > %f AND pmdec < %f''' % (
+        AND (distance > %f AND distance < %f)
+        AND (ra > %f AND ra < %f)
+        AND (dec > %f AND dec < %f)
+        AND (pmra > %f AND pmra < %f)
+        AND (pmdec > %f AND pmdec < %f)''' % (
             state["columns_to_fetch"], where,
-            min_d, max_d, min_ra, max_ra, min_dec,
-            max_dec, pmra_ang_vel_min, pmra_ang_vel_max,
-            pmdec_ang_vel_min, pmdec_ang_vel_max
+            bq_min_d, bq_max_d, bq_min_ra, bq_max_ra, bq_min_dec,
+            bq_max_dec, bq_pmra_ang_vel_min, bq_pmra_ang_vel_max,
+            bq_pmdec_ang_vel_min, bq_pmdec_ang_vel_max
         )
 
     maybe_comoving_stars = database_cursor.execute(find_nearby_query).fetchall()
@@ -130,7 +139,7 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     # neighbour cells. The provided get_neighbour_databases is assumed find those cells
     neighbour_cells_to_include = []
     if get_neighbour_databases != None:
-        neighbour_cells_to_include = get_neighbour_databases(ra, dec, d, cell_depth, min_d, max_d, min_ra, max_ra, min_dec, max_dec)
+        neighbour_cells_to_include = get_neighbour_databases(ra, dec, d, cell_depth, bq_min_d, bq_max_d, bq_min_ra, bq_max_ra, bq_min_dec, bq_max_dec)
 
     for n in neighbour_cells_to_include:
         nconn = db_connection_cache.get(n, state["open_connections"])
@@ -145,10 +154,21 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
     # Now we want to compare velocity direction and magnitude with each found nearby star
     # all proper motions are converted into rad/s and celestial velocity is converted to
     # cartesian vector with unit km/s.
+
+    pos = vec3.cartesian_position_from_celestial(ra, dec, d)
+    pos_error = vec3.cartesian_position_from_celestial(ra_error, dec_error, d_error)
+
     pmra_deg_per_year = pmra * conv.mas_to_deg
     pmdec_deg_per_year = pmdec * conv.mas_to_deg
     vrad_km_per_year = vrad / conv.sec_to_year
     vel_km_per_year = vec3.cartesian_velocity_from_celestial(ra, dec, d, pmra_deg_per_year, pmdec_deg_per_year, vrad_km_per_year) # km/s
+
+    pmra_error_deg_per_year = pmra_error * conv.mas_to_deg
+    pmdec_error_deg_per_year = pmdec_error * conv.mas_to_deg
+    vrad_error_km_per_year = vrad_error / conv.sec_to_year
+    vel_error_km_per_year = vec3.cartesian_velocity_from_celestial(ra, dec, d, pmra_error_deg_per_year, pmdec_error_deg_per_year, vrad_error_km_per_year) # km/s
+    vel_error_len_km_per_year = vec3.len(vel_error_km_per_year)
+
     found_comoving_stars = []
     found_comoving_stars_sids = []
     found_comoving_stars_database_cursors = []
@@ -156,18 +176,43 @@ def _find_comoving_to_star(star, database_cursor, state, in_current_group):
         mcs_ra = mcs[i_ra]
         mcs_dec = mcs[i_dec]
         mcs_d = mcs[i_distance]
+
+        mcs_ra_error = mcs[i_ra_error]
+        mcs_dec_error = mcs[i_dec_error]
+        mcs_d_error = mcs[i_distance_error]
+
+        mcs_pos = vec3.cartesian_position_from_celestial(mcs_ra, mcs_dec, mcs_d)
+        mcs_pos_error = vec3.cartesian_position_from_celestial(mcs_ra_error, mcs_dec_error, mcs_d_error)
+
+        error_sum = vec3.add(pos_error, mcs_pos_error)
+        error_sum_len = vec3.len(error_sum)
+
+        pos_diff = vec3.sub(mcs_pos, pos)
+        pos_diff_len = vec3.len(pos_diff)
+
+        if pos_diff_len > max_sep + error_sum_len:
+            continue
+
         mcs_pmra_deg_per_year = mcs[i_pmra] * conv.mas_to_deg
         mcs_pmdec_deg_per_year = mcs[i_pmdec] * conv.mas_to_deg
         mcs_vrad_km_per_year = mcs[i_radial_velocity] / conv.sec_to_year #km/s
         mcs_vel_km_per_year = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_d, mcs_pmra_deg_per_year, mcs_pmdec_deg_per_year, mcs_vrad_km_per_year) # km/s
+
+        mcs_pmra_error_deg_per_year = mcs[i_pmra_error] * conv.mas_to_deg
+        mcs_pmdec_error_deg_per_year = mcs[i_pmdec_error] * conv.mas_to_deg
+        mcs_vrad_error_km_per_year = mcs[i_radial_velocity_error] / conv.sec_to_year
+        mcs_vel_error_km_per_year = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_d, mcs_pmra_error_deg_per_year, mcs_pmdec_error_deg_per_year, mcs_vrad_error_km_per_year) # km/s
+        mcs_vel_error_len_km_per_year = vec3.len(mcs_vel_error_km_per_year)
+
         vel_vec_diff_km_per_year = vec3.sub(mcs_vel_km_per_year, vel_km_per_year)
-        speed_km_per_year = vec3.len(vel_vec_diff_km_per_year) 
+        speed_diff_km_per_year = vec3.len(vel_vec_diff_km_per_year) 
         
-        # Only keep stars within velocity limit
-        if speed_km_per_year < diff_limit_km_per_year:
-            found_comoving_stars.append(mcs)
-            found_comoving_stars_database_cursors.append(maybe_comoving_stars_database_cursors[idx])
-            found_comoving_stars_sids.append(mcs[i_source_id])
+        if speed_diff_km_per_year > max_vel_mag_diff_km_per_year + vel_error_len_km_per_year + mcs_vel_error_len_km_per_year:
+            continue
+
+        found_comoving_stars.append(mcs)
+        found_comoving_stars_database_cursors.append(maybe_comoving_stars_database_cursors[idx])
+        found_comoving_stars_sids.append(mcs[i_source_id])
 
     if len(found_comoving_stars) == 0:
         return []
