@@ -27,6 +27,7 @@ import math
 import vec3
 import db_connection_cache
 import utils_str
+import utils_dict
 
 # For SQL query, does not look at errors, so has big margins!
 maximum_broad_separation_pc = 20
@@ -337,16 +338,19 @@ for ix_str in os.listdir(db_folder):
                 continue
 
             find_comoving_stars_in_cell(cell_db_filename)
+        break
+    break
 
 db_connection_cache.remove_all(open_db_connections)
-cms_output_file = open(output_filename,"w")
+
+output_dict = {}
 
 for k,v in metadata.items():
-    cms_output_file.write("%s:%s\n" % (k, str(v)))
+    output_dict[k] = v
 
-cms_output_file.write("max_sep:%d\n" % maximum_final_separation_pc)
-cms_output_file.write("max_vel_mag_diff:%d\n" % maximum_final_velocity_diff_km_per_s)
-cms_output_file.write("groups:%s" % str(comoving_groups))
-cms_output_file.close()
+output_dict["max_sep"] = maximum_final_separation_pc
+output_dict["max_vel_mag_diff"] = maximum_final_velocity_diff_km_per_s
+output_dict["groups"] = comoving_groups
+utils_dict.write(output_dict, output_filename)
 
 print("Result saved to %s" % output_filename)

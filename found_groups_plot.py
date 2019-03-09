@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import vec3
 import conv
 import numpy
-import comoving_groups
+import utils_dict
 
 def verify_arguments():
     if len(sys.argv) < 4:
@@ -28,7 +28,7 @@ option = None
 if len(sys.argv) == 5:
     option = sys.argv[4]
 
-cg = comoving_groups.read(input_filename)
+cg = utils_dict.read(input_filename)
 
 cols = cg["columns"]
 i_col1 = cols.index(col1)

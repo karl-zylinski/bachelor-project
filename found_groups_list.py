@@ -6,7 +6,7 @@
 import sys
 import os
 import utils_str
-import comoving_groups
+import utils_dict
 
 def verify_arguments():
     if len(sys.argv) != 2 and len(sys.argv) != 3:
@@ -22,7 +22,7 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_list.py file [size]"
 input_filename = sys.argv[1]
-cg = comoving_groups.read(input_filename)
+cg = utils_dict.read(input_filename)
 cols = cg["columns"]
 i_source_id = cols.index("source_id")
 i_ra = cols.index("ra")

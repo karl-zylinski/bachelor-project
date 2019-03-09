@@ -5,7 +5,7 @@
 import sys
 import os
 import matplotlib.pyplot as plt
-import comoving_groups
+import utils_dict
 import vec3
 import conv
 import numpy
@@ -23,7 +23,7 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_plot_sep_vel_diff.py file"
 input_filename = sys.argv[1]
-cg = comoving_groups.read(input_filename)
+cg = utils_dict.read(input_filename)
 
 cols = cg["columns"]
 i_source_id = cols.index("source_id")

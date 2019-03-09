@@ -6,7 +6,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import utils_str
-import comoving_groups
+import utils_dict
 from statistics import mean
 
 def verify_arguments():
@@ -23,7 +23,7 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_list.py file id"
 input_filename = sys.argv[1]
-cg = comoving_groups.read(input_filename)
+cg = utils_dict.read(input_filename)
 
 input_id = int(sys.argv[2])
 

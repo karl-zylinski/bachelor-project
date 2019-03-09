@@ -7,7 +7,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import utils_str
-import comoving_groups
+import utils_dict
 
 min_size = 1
 
@@ -26,7 +26,7 @@ def verify_arguments():
 assert verify_arguments(), "Usage: found_groups_find_avg_pos.py file [id]"
 
 input_filename = sys.argv[1]
-cg = comoving_groups.read(input_filename)
+cg = utils_dict.read(input_filename)
 found_groups = cg["groups"]
 
 cols = cg["columns"]

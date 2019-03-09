@@ -8,7 +8,7 @@ import os
 import numpy
 import matplotlib.pyplot as plt
 import mist
-import comoving_groups
+import utils_dict
 
 def verify_arguments():
     if len(sys.argv) != 3:
@@ -21,7 +21,7 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: plot_comoving_groups_against_isochrones.py group_file age"
 
-cg = comoving_groups.read(sys.argv[1])
+cg = utils_dict.read(sys.argv[1])
 age = float(sys.argv[2])
 log10_age = numpy.log10(age)
 isos = {}

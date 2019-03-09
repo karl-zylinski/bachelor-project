@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import vec3
 import conv
 import numpy
-import comoving_groups
+import utils_dict
 
 def verify_arguments():
     if len(sys.argv) != 3:
@@ -24,7 +24,7 @@ def verify_arguments():
 
 assert verify_arguments(), "Usage: found_groups_get_source_ids.py input output"
 input_filename = sys.argv[1]
-cg = comoving_groups.read(input_filename)
+cg = utils_dict.read(input_filename)
 output_filename = sys.argv[2]
 i_source_id = cg["columns"].index("source_id")
 out_fh = open(output_filename, "w")

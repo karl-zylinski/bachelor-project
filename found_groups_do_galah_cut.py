@@ -5,7 +5,7 @@
 
 import os
 import sys
-import comoving_groups
+import utils_dict
 
 def verify_arguments():
     if len(sys.argv) < 3:
@@ -23,7 +23,7 @@ assert verify_arguments(), "Usage: found_groups_do_galah_cut.py input_file outpu
 input_filename = sys.argv[1]
 output_filename = sys.argv[2]
 
-cg = comoving_groups.read(input_filename)
+cg = utils_dict.read(input_filename)
 cols = cg["columns"]
 
 i_source_id = cols.index("source_id")
@@ -34,20 +34,27 @@ out_sids = []
 total = 0
 kept = 0
 
+groups_within_cut = []
+
 for g in cg["groups"]:
+    size = g["size"]
+    total = total + size
+    avg_b = 0
+    avg_dec = 0
+
     for s in g["stars"]:
-        total = total + 1
-        sid = s[i_source_id]
-        b = s[i_b]
-        dec = s[i_dec]
-        assert b != None and dec != None
+        avg_b = avg_b + s[i_b]
+        avg_dec = avg_dec + s[i_dec]
 
-        if abs(b) > 9 and dec < 11: # do 1 deg more just to be safe
-            kept = kept + 1
-            out_sids.append(str(sid))
+    avg_b = avg_b / size
+    avg_dec = avg_dec / size
 
-out_fh = open(output_filename, "w")
-out_fh.write("\n".join(out_sids))
-out_fh.close()
+    if abs(avg_b) > 9 and avg_dec < 11: # do 1 deg more just to be safe
+        groups_within_cut.append(g)
+        kept = kept + size
+
+out_cg = cg.copy()
+cg["groups"] = groups_within_cut
+utils_dict.write(cg, output_filename)
 
 print("Kept %d out of %d" % (kept, total))
