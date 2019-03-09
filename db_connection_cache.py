@@ -46,10 +46,6 @@ def remove_unused(open_connections):
         del open_connections[r]
 
 def remove_all(open_connections):
-    if open_connections == None and db_single != None:
-        db_single.close()
-        return
-
     for db_name, c in open_connections.items():
         c["conn"].commit()
         c["conn"].close()

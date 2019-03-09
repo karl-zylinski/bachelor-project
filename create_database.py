@@ -1,11 +1,11 @@
 # Author: Karl Zylinski, Uppsala University
 
 # The purpose of the file is to take gaia data and split it into cells
-# each cell is given by (int(ra), int(dec), int(distance/cell_depth))
-# the resulting database can then be used to do quick lookups.
+# each cell is given by x-y-z coordainates, which are created using
+# the function cartesian_position_from_celestial in file vec3.py
 
-# Creates a single-file-db if create_single_db is True.
-# Creates a gridded db if create_gridded_db is True.
+# The resulting database can then be used to do quick lookups,
+# see find_comoving_groups.py
 
 import time
 import os
@@ -229,14 +229,15 @@ for file in os.listdir(source_dir):
         dest_values[y_idx] = str(y)
         dest_values[z_idx] = str(z)
 
-        pmra_deg_per_year = float(dest_values[pmra_idx]) * conv.mas_to_deg
-        pmdec_deg_per_year = float(dest_values[pmdec_idx]) * conv.mas_to_deg
-        vrad_km_per_year = float(dest_values[radial_velocity_idx]) / conv.sec_to_year
-        vel_km_per_year = vec3.cartesian_velocity_from_celestial(ra, dec, distance, pmra_deg_per_year, pmdec_deg_per_year, vrad_km_per_year)
+        pmra_deg_per_s = float(dest_values[pmra_idx]) * conv.mas_per_yr_to_deg_per_s
+        pmdec_deg_per_s = float(dest_values[pmdec_idx]) * conv.mas_per_yr_to_deg_per_s
+        vrad_km_per_s = float(dest_values[radial_velocity_idx])
+        distance_km = distance*conv.parsec_to_km
+        vel_km_per_s = vec3.cartesian_velocity_from_celestial(ra, dec, distance_km, pmra_deg_per_s, pmdec_deg_per_s, vrad_km_per_s)
 
-        dest_values[vx_idx] = str(vel_km_per_year[0])
-        dest_values[vy_idx] = str(vel_km_per_year[1])
-        dest_values[vz_idx] = str(vel_km_per_year[2])
+        dest_values[vx_idx] = str(vel_km_per_s[0])
+        dest_values[vy_idx] = str(vel_km_per_s[1])
+        dest_values[vz_idx] = str(vel_km_per_s[2])
 
         write_star(x, y, z, dest_values)
         total_counter = total_counter + 1
