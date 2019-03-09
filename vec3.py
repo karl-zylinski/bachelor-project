@@ -26,6 +26,7 @@ def cartesian_position_from_celestial(ra, dec, r):
             r * sin(ra_rad) * cos(dec_rad), # sin(ra_rad) * sin(pi/2 - dec_rad)
             r * sin(dec_rad)] # cos(pi/2 - dec_rad)
 
+# assumes all angles to be in degrees, make sure to have same time unit on velocities
 def cartesian_velocity_from_celestial(ra, dec, r, pmra, pmdec, rv):
     ra_rad = ra * conv.deg_to_rad
     dec_rad = dec * conv.deg_to_rad

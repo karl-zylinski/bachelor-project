@@ -10,25 +10,22 @@
 import time
 import os
 import datetime
-import pickle
 import utils_str
 import utils_path
 import sys
 import math
 import gaia_columns
 import db_connection_cache
-import sqlite3
+import vec3
+import conv
 
 cut_pmra_over_error = 10
 cut_pmdec_over_error = 10
 cut_radial_velocity_over_error = 10
 
-create_single_db = False # Disable if doing complete Gaia DR2
-create_gridded_db = True
-disk_bouncing = False # DONT ENABLE, ITS BROKEN. Needed if we do full DR2
-min_dist = 0 # pc
-max_dist = 3000 # pc
-cell_depth = 60 # pc
+min_dist_pc = 0 # pc
+max_dist_pc = 3000 # pc
+cell_size_pc = 60 # pc
 start_time = time.time()
 
 def verify_arguments():
@@ -62,8 +59,8 @@ os.mkdir(dest_dir)
 assert(len(gaia_columns.columns) == len(gaia_columns.data_types))
 
 # add extra columns not in gaia source
-extra_columns = ["distance", "distance_error"]
-extra_coumns_data_type = ["real", "real"]
+extra_columns = ["distance", "distance_error", "x", "y", "z", "vx", "vy", "vz"]
+extra_coumns_data_type = ["real", "real", "real", "real", "real", "real", "real", "real"]
 
 all_columns = gaia_columns.columns + extra_columns
 all_columns_data_types = gaia_columns.data_types + extra_coumns_data_type
@@ -73,8 +70,8 @@ metadata_fh = open("%s/metadata" % dest_dir, "w")
 metadata_fh.write("cut_pmra_over_error:%d\n" % cut_pmra_over_error)
 metadata_fh.write("cut_pmdec_over_error:%d\n" % cut_pmdec_over_error)
 metadata_fh.write("cut_radial_velocity_over_error:%d\n" % cut_radial_velocity_over_error)
-metadata_fh.write("max_distance:%d\n" % max_dist)
-metadata_fh.write("cell_depth:%d\n" % cell_depth)
+metadata_fh.write("max_distance:%d\n" % max_dist_pc)
+metadata_fh.write("cell_size:%d\n" % cell_size_pc)
 metadata_fh.write("columns:%s\n" % str(all_columns))
 metadata_fh.write("columns_datatypes:%s" % str(all_columns_data_types))
 metadata_fh.close()
@@ -91,6 +88,12 @@ radial_velocity_idx = gaia_columns.index("radial_velocity")
 radial_velocity_error_idx = gaia_columns.index("radial_velocity_error")
 distance_idx = all_columns.index("distance")
 distance_error_idx = all_columns.index("distance_error")
+x_idx = all_columns.index("x")
+y_idx = all_columns.index("y")
+z_idx = all_columns.index("z")
+vx_idx = all_columns.index("vx")
+vy_idx = all_columns.index("vy")
+vz_idx = all_columns.index("vz")
 
 create_table_columns = ""
 
@@ -103,22 +106,12 @@ for i in range(0, len(all_columns)):
 create_table_str = "CREATE TABLE gaia (" + create_table_columns[:-1] + ")"
 insert_into_table_columns = ",".join(all_columns)
 
-single_db_conn = None
-single_db_cursor = None
-
-if create_single_db:
-    single_db_conn = sqlite3.connect("%s/%s" % (dest_dir, "single_db.db"))
-    single_db_cursor = single_db_conn.cursor()
-    single_db_cursor.execute('pragma mmap_size=4294967296;')
-    single_db_cursor.execute(create_table_str)
-
-num_distance_cells = (max_dist - min_dist)//cell_depth
+num_cells_per_axis = (max_dist_pc*2)/cell_size_pc # ex from -3000 to 3000 divded by cell_size
 
 skipped_no_parallax = 0
 skipped_cut_pmra = 0
 skipped_cut_pmdec = 0
 skipped_cut_radial_velocity = 0
-skipped_cut_parallax = 0
 total_counter = 0
 file_counter = 0
 open_connections = {}
@@ -128,7 +121,6 @@ def is_valid(source_values):
     global skipped_cut_pmra
     global skipped_cut_pmdec
     global skipped_cut_radial_velocity
-    global skipped_cut_parallax
 
     # sanity
     if len(source_values) != len(gaia_columns.columns):
@@ -159,34 +151,27 @@ def is_valid(source_values):
 
     return True
 
-def write_star(ra, dec, dist, data):
+def write_star(x, y, z, data):
     insertion_value_str = ",".join(data)
     insertion_str = "INSERT INTO gaia (" + insert_into_table_columns + ") VALUES (%s)" % insertion_value_str
 
-    if create_gridded_db:
-        ra_idx = int(ra)
-        dec_idx = int(dec)
-        dist_idx = int(distance/cell_depth)
-        segment_dir = "%s/%d/%+d" % (dest_dir, ra_idx, dec_idx)
+    x_idx = int(x/cell_size_pc)
+    y_idx = int(y/cell_size_pc)
+    z_idx = int(z/cell_size_pc)
+    cell_dir = utils_path.append_many(dest_dir, [x_idx, y_idx, z_idx])
 
-        if not os.path.isdir(segment_dir):
-            os.makedirs(segment_dir)
+    if not os.path.isdir(cell_dir):
+        os.makedirs(cell_dir)
 
-        cell_db_filename = "%s/%d.db" % (segment_dir, dist_idx)
+    cell_db_filename = utils_path.append(cell_dir, "cell.db")
+    new_db = not os.path.isfile(cell_db_filename)
+    c = db_connection_cache.get(cell_db_filename, open_connections)
 
-        new_db = not os.path.isfile(cell_db_filename)
-        c = db_connection_cache.get(cell_db_filename, open_connections)
+    if new_db:
+        c.execute(create_table_str)
 
-        if new_db:
-            c.execute(create_table_str)
+    c.execute(insertion_str)
 
-        c.execute(insertion_str)
-
-    if create_single_db:
-        single_db_cursor.execute(insertion_str)
-
-        if total_counter % 10000 == 0:
-            single_db_conn.commit()
 
 for file in os.listdir(source_dir):
     if not file.endswith(".csv"):
@@ -226,17 +211,35 @@ for file in os.listdir(source_dir):
         parallax_error = float(dest_values[parallax_error_idx])
         distance = 1.0/(parallax/1000.0)
         distance_error = 1000*(parallax_error/(parallax*parallax)) # by error propagation of d = 1000/p (p in mas)
-
-        if distance < min_dist or distance > max_dist:
-            continue
-
         dest_values[distance_idx] = str(distance)
         dest_values[distance_error_idx] = str(distance_error)
 
         ra = float(dest_values[ra_idx])
         dec = float(dest_values[dec_idx])
+        pos = vec3.cartesian_position_from_celestial(ra, dec, distance)
+        x = pos[0]
+        y = pos[1]
+        z = pos[2]
 
-        write_star(ra, dec, distance, dest_values)
+        if (x < -max_dist_pc or x > max_dist_pc or
+            y < -max_dist_pc or y > max_dist_pc or
+            z < -max_dist_pc or z > max_dist_pc):
+            continue
+
+        dest_values[x_idx] = str(x)
+        dest_values[y_idx] = str(y)
+        dest_values[z_idx] = str(z)
+
+        pmra_deg_per_year = float(dest_values[pmra_idx]) * conv.mas_to_deg
+        pmdec_deg_per_year = float(dest_values[pmdec_idx]) * conv.mas_to_deg
+        vrad_km_per_year = float(dest_values[radial_velocity_idx]) / conv.sec_to_year
+        vel_km_per_year = vec3.cartesian_velocity_from_celestial(ra, dec, distance, pmra_deg_per_year, pmdec_deg_per_year, vrad_km_per_year)
+
+        dest_values[vx_idx] = str(vel_km_per_year[0])
+        dest_values[vy_idx] = str(vel_km_per_year[1])
+        dest_values[vz_idx] = str(vel_km_per_year[2])
+
+        write_star(x, y, z, dest_values)
         total_counter = total_counter + 1
 
         if total_counter % 1000 == 0:
@@ -248,18 +251,6 @@ for file in os.listdir(source_dir):
     print("Written to grid for csv: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))
 
 db_connection_cache.remove_all(open_connections)
-
-if create_single_db:
-    print("Creating single db indices")
-    single_db_cursor.execute("CREATE INDEX index_ra ON gaia (ra)")
-    single_db_cursor.execute("CREATE INDEX index_dec ON gaia (dec)")
-    single_db_cursor.execute("CREATE INDEX index_parallax ON gaia (parallax)")
-    single_db_cursor.execute("CREATE INDEX index_pmra ON gaia (pmra)")
-    single_db_cursor.execute("CREATE INDEX index_pmdec ON gaia (pmdec)")
-    single_db_cursor.execute("CREATE INDEX index_radial_velocity ON gaia (radial_velocity)")
-    single_db_cursor.execute("CREATE INDEX index_distance ON gaia (distance)")
-    single_db_conn.commit()
-    single_db_conn.close()
 
 end_time = time.time()
 dt = end_time - start_time

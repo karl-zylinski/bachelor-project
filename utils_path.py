@@ -14,3 +14,9 @@ def append(path, item):
         return "%s%s" % (path, item)
 
     return "%s/%s" % (path, item)
+
+def append_many(path, items):
+    p = path
+    for i in items:
+        p = append(p, i)
+    return p

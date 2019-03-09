@@ -6,9 +6,10 @@ import utils_path
 import math
 import vec3
 import time
+import db_connection_cache
 
 # THIS FILE DOES THE FOLLOWING CUTS
-maximum_separation_pc = 15
+maximum_separation_pc = 20
 maximum_velocity_diff_km_s = 5
 
 maximum_velocity_diff_km_per_year = maximum_velocity_diff_km_s / conv.sec_to_year
@@ -28,7 +29,6 @@ def verify_arguments():
 assert verify_arguments(), "Usage: find_comoving_cut1.py db_folder output.cms"
 
 db_folder = sys.argv[1]
-db_filename = utils_path.append(db_folder, "single_db.db")
 output_file = sys.argv[2]
 
 conn = sqlite3.connect(db_filename)
@@ -50,7 +50,10 @@ for mdl in metadata_lines:
 
     metadata[key_value_pair[0]] = eval(key_value_pair[1])
 
-comparison_cols = ["source_id", "ra", "dec", "distance", "pmra", "pmdec", "radial_velocity"]
+cell_size_pc = metadata["cell_size"]
+max_dist_pc = metadata["max_dist"]
+max_cells_per_axis = int(max_dist_pc/cell_size_pc)
+cols = metadata["columns"]
 
 # Get indiices of relavant colums (quicker lookup)
 i_sid = comparison_cols.index("source_id")
@@ -60,80 +63,95 @@ i_dist = comparison_cols.index("distance")
 i_pmra = comparison_cols.index("pmra")
 i_pmdec = comparison_cols.index("pmdec")
 i_rv = comparison_cols.index("radial_velocity")
+i_x = comparison_cols.index("x")
+i_y = comparison_cols.index("y")
+i_z = comparison_cols.index("z")
+i_vx = comparison_cols.index("vx")
+i_vy = comparison_cols.index("vy")
+i_vz = comparison_cols.index("vz")
 
-columns_to_fetch = ",".join(comparison_cols)
-columns_to_save = ",".join(metadata["columns"])
+columns_to_fetch = ",".join(cols)
 comoving_groups = []
 star_sid_to_comoving_group_index = {}
+
+def get_neighbouring_cell_databases(min_x, max_x, min_y, max_y, min_z, max_z):
+    min_x_idx = int(min_x/cell_size_pc)
+    max_x_idx = int(max_x/cell_size_pc)
+    min_y_idx = int(min_y/cell_size_pc)
+    max_y_idx = int(max_y/cell_size_pc)
+    min_z_idx = int(min_z/cell_size_pc)
+    max_z_idx = int(max_z/cell_size_pc)
+    to_add = set()
+
+    for x_idx in range(min_x_idx, max_x_idx + 1):
+        for y_idx in range(min_y_idx, max_y_idx + 1):
+            for z_idx in range(min_z_idx, max_z_idx + 1):
+                if cur_x_idx == x_idx and cur_y_idx == y_idx and cur_z_idx == z_idx:
+                    continue
+
+                db_name = utils_path.append_many(db_folder, [str(x_idx), str(y_idx), str(z_idx), "cell.db"])
+
+                if os.path.isfile(db_name):
+                    to_add.add(db_name)
+
+    return to_add
 
 def find_comoving_to_star(star, in_group_sids):
     if star_sid_to_comoving_group_index.get(star[i_sid]) != None:
         return []
 
-    ### Position min/max
-    dist = star[i_dist]
-    ra = star[i_ra]
-    dec = star[i_dec]
-    max_angular_sep = (maximum_separation_pc/dist)*conv.rad_to_deg
+    x = star[i_x]
+    y = star[i_y]
+    z = star[i_z]
+    cur_x_idx = int(x/cell_size_pc)
+    cur_y_idx = int(y/cell_size_pc)
+    cur_z_idx = int(z/cell_size_pc)
 
-    # ra becomes smaller the further up we look
-    ra_angular_sep_scaling = math.cos(conv.deg_to_rad*abs(dec))
+    conn_filename = utils_path.append_many(db_folder, [str(x_idx), str(y_idx), str(z_idx), "cell.db"])
+    conn = db_connection_cache.get(conn_filename, open_db_connections)
 
-    if ra_angular_sep_scaling > 10000:
-        ra_angular_sep_scaling = 10000
+    min_x = math.max(x - maximum_separation_pc, -maximum_separation_pc)
+    max_x = math.min(x + maximum_separation_pc, maximum_separation_pc)
+    min_y = math.max(y - maximum_separation_pc, -maximum_separation_pc)
+    max_y = math.min(y + maximum_separation_pc, maximum_separation_pc)
+    min_z = math.max(z - maximum_separation_pc, -maximum_separation_pc)
+    max_z = math.min(z + maximum_separation_pc, maximum_separation_pc)
 
-    min_ra = ra - max_angular_sep/ra_angular_sep_scaling
-    max_ra = ra + max_angular_sep/ra_angular_sep_scaling
-    min_dec = dec - max_angular_sep
-    max_dec = dec + max_angular_sep
-    min_dist = dist - maximum_separation_pc
-    max_dist = dist + maximum_separation_pc
-
-    ra_where_op = "AND"
-    if min_ra < 0 and max_ra < 360:
-        min_ra = 360 + min_ra
-
-        if min_ra > max_ra:
-            ra_where_op = "OR"
-    
-    if min_ra > 0 and max_ra >= 360:
-        max_ra = max_ra - 360
-
-        if min_ra > max_ra:
-            ra_where_op = "OR"
-
-    ### Velocity min/max
-    pmra = star[i_pmra]
-    pmdec = star[i_pmdec]
-    rv = star[i_rv]
-    ang_vel_diff = maximum_velocity_diff_km_s / (conv.parsec_to_km * dist * conv.mas_per_yr_to_rad_per_s)
-    min_pmra = pmra - ang_vel_diff
-    max_pmra = pmra + ang_vel_diff
-    min_pmdec = pmdec - ang_vel_diff
-    max_pmdec = pmdec + ang_vel_diff
-    min_rv = rv - maximum_velocity_diff_km_s
-    max_rv = rv + maximum_velocity_diff_km_s
+    vx = star[i_vx]
+    vy = star[i_vy]
+    vz = star[i_vz]
+    min_vx = vx - maximum_velocity_diff_km_per_year
+    max_vx = vx + maximum_velocity_diff_km_per_year
+    min_vy = vy - maximum_velocity_diff_km_per_year
+    max_vy = vy + maximum_velocity_diff_km_per_year
+    min_vz = vz - maximum_velocity_diff_km_per_year
+    max_vz = vz + maximum_velocity_diff_km_per_year
 
     find_nearby_query = '''
         SELECT %s
         FROM gaia
         WHERE source_id NOT IN (%s)
-        AND (distance > %f AND distance < %f)
-        AND (ra > %f %s ra < %f)
-        AND (dec > %f AND dec < %f)
-        AND (pmra > %f AND pmra < %f)
-        AND (pmdec > %f AND pmdec < %f)
-        AND (radial_velocity > %f AND radial_velocity < %f)''' % (
+        AND (x > %f AND x < %f)
+        AND (y > %f AND y < %f)
+        AND (z > %f AND z < %f)
+        AND (vx > %f AND vx < %f)
+        AND (vy > %f AND vy < %f)
+        AND (vz > %f AND vz < %f)''' % (
             columns_to_fetch,
             ",".join(map(lambda x: str(x), in_group_sids)),
-            min_dist, max_dist,
-            min_ra, ra_where_op, max_ra,
-            min_dec, max_dec,
-            min_pmra, max_pmra,
-            min_pmdec, max_pmdec,
-            min_rv, max_rv)
+            min_x, max_x,
+            min_y, max_y,
+            min_z, max_z,
+            min_vx, max_vx,
+            min_vy, max_vy,
+            min_vz, max_vz)
 
     maybe_comoving_to_star = conn.execute(find_nearby_query).fetchall()
+    neighbour_cells_to_include = get_neighbouring_cell_databases(min_x, max_x, min_y, max_y, min_z, max_z)
+
+    for neighbour_cell_db_name in neighbour_cells_to_include:
+        neighbour_conn = db_connection_cache.get(neighbour_cell_db_name, open_db_connections)
+        maybe_comoving_to_star.extend(neighbour_conn.execute(find_nearby_query).fetchall())
 
     if len(maybe_comoving_to_star) == 0:
         return []
@@ -171,49 +189,85 @@ def find_comoving_to_star(star, in_group_sids):
         comoving_to_star.append(mcs)
 
     in_group_sids.update(map(lambda x: x[i_sid], comoving_to_star))
+    resulting_stars = comoving_to_star.copy()
 
     for cm_star in comoving_to_star:
-        find_comoving_to_star(cm_star, in_group_sids)
+        resulting_stars.extend(find_comoving_to_star(cm_star, in_group_sids))
 
-num_stars = int(conn.execute("SELECT count(source_id) FROM gaia").fetchone()[0])
-num_done = 1
-all_stars_select_str = "SELECT %s FROM gaia" % columns_to_fetch
-all_stars = conn.execute(all_stars_select_str)
+    return resulting_stars
+
+num_done = 0
+open_db_connections = {}
+
+def find_comoving_stars_in_cell(db_filename)
+    conn = db_connection_cache.get(db_filename, open_db_connections)
+    all_stars_select_str = "SELECT %s FROM gaia" % columns_to_fetch
+    all_stars = conn.execute(all_stars_select_str)
+    
+    for star in all_stars:
+        num_done = num_done + 1
+        sid = star[i_sid]
+
+        if star_sid_to_comoving_group_index.get(sid) != None:
+            continue
+
+        in_group_sids = set()
+        in_group_sids.add(sid)
+        comoving_group = find_comoving_to_star(star, in_group_sids)
+
+        if len(comoving_group) == 0:
+            continue
+
+        group_index = len(comoving_groups)
+        group_size = len(comoving_group)
+        group_object = {}
+        group_object["stars"] = list(comoving_group)
+        group_object["size"] = group_size
+
+        for cms in comoving_group:
+            star_sid_to_comoving_group_index[cms[i_sid]] = group_index
+
+        comoving_groups.append(group_object)
+
+        print("Found comoving group of size %d" % group_size)
 
 start_time = time.time()
+for ix_str in os.listdir(db_folder):
+    ix_folder = utils_path.append(db_folder, ix_str)
 
-for star in all_stars:
-    cur_time = time.time()
-    time_elapsed = cur_time - start_time
-    time_left_h = ((time_elapsed/num_done)*(num_stars - num_done))/3600/24
-    print("%d/%d (%.1f percent, time left: %.001f days)" % (num_done, num_stars, num_done/num_stars, time_left_h))
-    num_done = num_done + 1
-
-    sid = star[i_sid]
-
-    if star_sid_to_comoving_group_index.get(sid) != None:
+    if not os.path.isdir(ix_folder):
         continue
 
-    in_group_sids = set()
-    in_group_sids.add(sid)
+    ix = utils_str.to_int(ix_str) # ix as in integer x
 
-    find_comoving_to_star(star, in_group_sids)
-
-    if len(in_group_sids) == 1:
+    if ix == None:
         continue
 
-    comoving_group = conn.execute("SELECT %s FROM gaia WHERE source_id IN (%s)" % (
-        columns_to_save, ",".join(map(lambda x: str(x), in_group_sids)))).fetchall()
+    for iy_str in os.listdir(ix_folder):
+        iy_folder = utils_path.append(ix_folder, iy_str)
 
-    group_index = len(comoving_groups)
-    group_size = len(comoving_group)
-    group_object = {}
-    group_object["stars"] = list(comoving_group)
-    group_object["size"] = group_size
+        if not os.path.isdir(iy_folder):
+            continue
 
-    for cms in comoving_group:
-        star_sid_to_comoving_group_index[cms[i_sid]] = group_index
+        iy = utils_str.to_int(iy_str)
 
-    comoving_groups.append(group_object)
+        if iy == None:
+            continue
 
-    print("Found comoving group of size %d" % group_size)
+        for iz_str in os.listdir(iy_folder):
+            iz_folder = utils_path.append(iy_folder, iz_str)
+
+            if not os.path.isdir(iz_folder):
+                continue
+
+            iz = utils_str.to_int(iz_str)
+
+            if iz == None:
+                continue
+
+            cell_db_filename = utils_path.append(iz_folder, "cell.db")
+            
+            if not os.path.isfile(cell_db_filename):
+                continue
+
+            find_comoving_stars_in_cell(cell_db_filename)
