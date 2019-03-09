@@ -94,10 +94,11 @@ i_pmra_error = cols.index("pmra_error")
 i_pmdec_error = cols.index("pmdec_error")
 i_rv_error = cols.index("radial_velocity_error")
 
-columns_to_fetch = ",".join(cols)
-comoving_groups = []
-star_sid_to_comoving_group_index = {}
+columns_to_fetch = ",".join(cols) # Used in SQL query
+comoving_groups = [] # This is where are found groups are stored
+star_sid_to_comoving_group_index = {} # Lookup-table, also used to make sure no star is in two groups
 
+# For getting data base names of cells close to current one that are within search radius.
 def get_neighbouring_cell_databases(cur_x_idx, cur_y_idx, cur_z_idx, min_x, max_x, min_y, max_y, min_z, max_z):
     min_x_idx = int(min_x/cell_size_pc)
     max_x_idx = int(max_x/cell_size_pc)
@@ -111,18 +112,22 @@ def get_neighbouring_cell_databases(cur_x_idx, cur_y_idx, cur_z_idx, min_x, max_
         for y_idx in range(min_y_idx, max_y_idx + 1):
             for z_idx in range(min_z_idx, max_z_idx + 1):
                 if cur_x_idx == x_idx and cur_y_idx == y_idx and cur_z_idx == z_idx:
-                    continue
+                    continue # Do not include self!!
 
-                db_name = utils_path.append_many(db_folder, [str(x_idx), str(y_idx), str(z_idx), "cell.db"])
+                db_name = utils_path.append(db_folder, "%+d/%+d/%+d/cell.db" % (x_idx, y_idx, z_idx))
 
                 if os.path.isfile(db_name):
                     to_add.add(db_name)
 
     return to_add
 
+# Takes a star and looks around it for stars with simiar position and velocity,
+# first in an over-sized box using SQL query, then it looks at smaller radii and tigther
+# velocities. The function is recursive, calling it self for any found comoving star,
+# creating a network of comoving stars.
 def find_comoving_to_star(star, in_group_sids):
     if star_sid_to_comoving_group_index.get(star[i_sid]) != None:
-        return []
+        return [] # Star already in other group!
 
     x = star[i_x]
     y = star[i_y]
@@ -131,7 +136,7 @@ def find_comoving_to_star(star, in_group_sids):
     y_idx = int(y/cell_size_pc)
     z_idx = int(z/cell_size_pc)
 
-    conn_filename = utils_path.append_many(db_folder, [str(x_idx), str(y_idx), str(z_idx), "cell.db"])
+    conn_filename = utils_path.append(db_folder, "%+d/%+d/%+d/cell.db" % (x_idx, y_idx, z_idx))
     conn = db_connection_cache.get(conn_filename, open_db_connections)
 
     min_x = max(x - maximum_broad_separation_pc, -max_distance_pc)
@@ -151,6 +156,9 @@ def find_comoving_to_star(star, in_group_sids):
     min_vz = vz - maximum_broad_velocity_diff_km_per_s
     max_vz = vz + maximum_broad_velocity_diff_km_per_s
 
+    # Just boxes in everything in an oversized box
+    # (compare value of maximum_broad_separation_pc to maximum_final_separation_pc).
+    # Makes sure to not compare stars with themselves by excluding using source_ids.
     find_nearby_query = '''
         SELECT %s
         FROM gaia
@@ -192,7 +200,7 @@ def find_comoving_to_star(star, in_group_sids):
         star[i_pmra]*conv.mas_per_yr_to_deg_per_s, star[i_pmdec]*conv.mas_per_yr_to_deg_per_s, star[i_rv])
 
     vel_error_km_per_s = vec3.cartesian_velocity_from_celestial(ra, dec, dist*conv.parsec_to_km,
-        star[i_pmra_error]*conv.mas_per_yr_to_deg_per_s star[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s star[i_rv_error])
+        star[i_pmra_error]*conv.mas_per_yr_to_deg_per_s, star[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s, star[i_rv_error])
 
     vel_error_len_km_per_s = vec3.len(vel_error_km_per_s)
 
@@ -205,6 +213,7 @@ def find_comoving_to_star(star, in_group_sids):
         pos_error_sum_len = vec3.len(vec3.add(pos_error, mcs_pos_error))
         pos_diff_len = vec3.len(vec3.sub(mcs_pos, pos))
 
+        # Position cut
         if pos_diff_len > maximum_final_separation_pc:# + pos_error_sum_len:
             continue
 
@@ -222,7 +231,8 @@ def find_comoving_to_star(star, in_group_sids):
 
         speed_diff = vec3.len(vec3.sub(mcs_vel_km_per_s, vel_km_per_s))
         
-        if speed_diff > maximum_final_velocity_diff_km_s:# + vel_error_len_km_per_s + mcs_vel_error_len_km_per_s:
+        # Velocity cut
+        if speed_diff > maximum_final_velocity_diff_km_per_s:# + vel_error_len_km_per_s + mcs_vel_error_len_km_per_s:
             continue
 
         comoving_to_star.append(mcs)
@@ -230,17 +240,22 @@ def find_comoving_to_star(star, in_group_sids):
     if len(comoving_to_star) == 0:
         return []
 
+    # Important! Recursive call must not re-use already used star.
     in_group_sids.update(map(lambda x: x[i_sid], comoving_to_star))
     resulting_stars = comoving_to_star.copy()
 
+    # Look for comoving stars to the comoving stars, creating a network of comoving stars.
     for cm_star in comoving_to_star:
         resulting_stars.extend(find_comoving_to_star(cm_star, in_group_sids))
 
     return resulting_stars
 
 total_stars_processed = 0
-open_db_connections = {}
+open_db_connections = {} # Used by db_connection_cache to keep track of living databases.
 
+# Goes over all stars within a cell and tries to find other stars that are comoving
+# to it. This and find_comoving_to_star-function makes sure to NOT include the same
+# in more than one group.
 def find_comoving_stars_in_cell(db_filename):
     global total_stars_processed
 
@@ -257,7 +272,7 @@ def find_comoving_stars_in_cell(db_filename):
         sid = star[i_sid]
 
         if star_sid_to_comoving_group_index.get(sid) != None:
-            continue
+            continue # Star already in other group!
 
         in_group_sids = set()
         in_group_sids.add(sid)
@@ -274,6 +289,7 @@ def find_comoving_stars_in_cell(db_filename):
         group_object["stars"] = list(comoving_group)
         group_object["size"] = group_size
 
+        # Add all stars in group to lookup-table so they aren't re-used
         for cms in comoving_group:
             star_sid_to_comoving_group_index[cms[i_sid]] = group_index
 
@@ -283,6 +299,7 @@ def find_comoving_stars_in_cell(db_filename):
 
     db_connection_cache.remove_unused(open_db_connections)
 
+# Traverse the x/y/z/cell.db directory structure and call find_comoving_stars_in_cell for each cell.db
 for ix_str in os.listdir(db_folder):
     ix_folder = utils_path.append(db_folder, ix_str)
 
@@ -323,11 +340,6 @@ for ix_str in os.listdir(db_folder):
 
             find_comoving_stars_in_cell(cell_db_filename)
 
-            break
-
-        break
-    break
-
 db_connection_cache.remove_all(open_db_connections)
 cms_output_file = open(output_filename,"w")
 
@@ -335,7 +347,7 @@ for k,v in metadata.items():
     cms_output_file.write("%s:%s\n" % (k, str(v)))
 
 cms_output_file.write("max_sep:%d\n" % maximum_final_separation_pc)
-cms_output_file.write("max_vel_mag_diff:%d\n" % maximum_final_velocity_diff_km_s)
+cms_output_file.write("max_vel_mag_diff:%d\n" % maximum_final_velocity_diff_km_per_s)
 cms_output_file.write("groups:%s" % str(comoving_groups))
 cms_output_file.close()
 

@@ -25,12 +25,12 @@ cg = comoving_groups.read(input_filename)
 
 cols = cg["columns"]
 i_source_id = cols.index("source_id")
-i_ra = cols.index("ra")
-i_dec = cols.index("dec")
-i_pmra = cols.index("pmra")
-i_pmdec = cols.index("pmdec")
-i_radial_velocity = cols.index("radial_velocity")
-i_distance = cols.index("distance")
+i_x = cols.index("x")
+i_y = cols.index("y")
+i_z = cols.index("z")
+i_vx = cols.index("vx")
+i_vy = cols.index("vy")
+i_vz = cols.index("vz")
 i_phot_g_mean_mag = cols.index("phot_g_mean_mag")
 
 seps = []
@@ -40,25 +40,25 @@ for g in cg["groups"]:
     if g["size"] != 2:
         continue
 
-    ra1 = g["stars"][0][i_ra]
-    dec1 = g["stars"][0][i_dec]
-    distance1 = g["stars"][0][i_distance]
-    pmra1 = g["stars"][0][i_pmra]
-    pmdec1 = g["stars"][0][i_pmdec]
-    rv1 = g["stars"][0][i_radial_velocity]
-    ra2 = g["stars"][1][i_ra]
-    dec2 = g["stars"][1][i_dec]
-    distance2 = g["stars"][1][i_distance]
-    pmra2 = g["stars"][1][i_pmra]
-    pmdec2 = g["stars"][1][i_pmdec]
-    rv2 = g["stars"][1][i_radial_velocity]
+    x1 = g["stars"][0][i_x]
+    y1 = g["stars"][0][i_y]
+    z1 = g["stars"][0][i_z]
+    vx1 = g["stars"][0][i_vx]
+    vy1 = g["stars"][0][i_vy]
+    vz1 = g["stars"][0][i_vz]
+    x2 = g["stars"][1][i_x]
+    y2 = g["stars"][1][i_y]
+    z2 = g["stars"][1][i_z]
+    vx2 = g["stars"][1][i_vx]
+    vy2 = g["stars"][1][i_vy]
+    vz2 = g["stars"][1][i_vz]
 
 
-    pos1 = vec3.from_celestial(ra1*conv.deg_to_rad, dec1*conv.deg_to_rad, distance1)
-    pos2 = vec3.from_celestial(ra2*conv.deg_to_rad, dec2*conv.deg_to_rad, distance2)
+    pos1 = [x1, y1, z1]
+    pos2 = [x2, y2, z2]
     sep = vec3.len(vec3.sub(pos2, pos1))
-    v1 = vec3.from_celestial(pmra1*conv.mas_per_yr_to_rad_per_s, pmdec1*conv.mas_per_yr_to_rad_per_s, rv1)
-    v2 = vec3.from_celestial(pmra2*conv.mas_per_yr_to_rad_per_s, pmdec2*conv.mas_per_yr_to_rad_per_s, rv2)
+    v1 = [vx1, vy1, vz1]
+    v2 = [vx2, vy2, vz2]
     vel_diff = vec3.len(vec3.sub(v2, v1))
 
     seps.append(sep)

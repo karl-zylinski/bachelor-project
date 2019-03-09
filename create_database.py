@@ -173,7 +173,6 @@ def write_star(x, y, z, data):
 
     c.execute(insertion_str)
 
-
 for file in os.listdir(source_dir):
     if not file.endswith(".csv"):
         continue
@@ -191,7 +190,7 @@ for file in os.listdir(source_dir):
 
         dest_values = [None] * len(all_columns)
 
-        # throws in all columns that we take from Gaia as-is (compared to distance, calculated below)
+        # throws in all columns that we take from Gaia as-is (compared to distance etc, calculated below)
         for idx, val in enumerate(source_values):
             dt = gaia_columns.data_types[idx]
             stripped_val = val.strip() # remove spaces and linebreaks!
@@ -207,10 +206,9 @@ for file in os.listdir(source_dir):
             else:
                 dest_values[idx] = stripped_val
 
-        # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
         parallax = float(dest_values[parallax_idx])
         parallax_error = float(dest_values[parallax_error_idx])
-        distance = 1.0/(parallax/1000.0)
+        distance = 1.0/(parallax/1000.0) # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
         distance_error = 1000*(parallax_error/(parallax*parallax)) # by error propagation of d = 1000/p (p in mas)
         dest_values[distance_idx] = str(distance)
         dest_values[distance_error_idx] = str(distance_error)
@@ -247,11 +245,13 @@ for file in os.listdir(source_dir):
         if total_counter % 1000 == 0:
             print("%d done" % total_counter)
 
+        # Make sure no connection variables acquired before running this are used again.
         db_connection_cache.remove_unused(open_connections)
     
     file_counter = file_counter + 1
     print("Written to grid for csv: %s (%d files done, %d stars done)" % (file, file_counter, total_counter))
 
+# Flushes out everything to disk.
 db_connection_cache.remove_all(open_connections)
 
 end_time = time.time()
