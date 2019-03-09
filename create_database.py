@@ -23,8 +23,8 @@ cut_pmra_over_error = 10
 cut_pmdec_over_error = 10
 cut_radial_velocity_over_error = 10
 
-create_single_db = True # Disable if doing complete Gaia DR2
-create_gridded_db = False
+create_single_db = False # Disable if doing complete Gaia DR2
+create_gridded_db = True
 disk_bouncing = False # DONT ENABLE, ITS BROKEN. Needed if we do full DR2
 min_dist = 0 # pc
 max_dist = 3000 # pc
