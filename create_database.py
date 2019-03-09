@@ -1,7 +1,8 @@
 # Author: Karl Zylinski, Uppsala University
 
-# The purpose of the file is to take gaia data and split it into cells
-# each cell is given by x-y-z coordainates, which are created using
+# Takes Gaia data and split it into cells.
+
+# Each cell is given by x-y-z coordainates, which are created using
 # the function cartesian_position_from_celestial in file vec3.py
 
 # The resulting database can then be used to do quick lookups,
@@ -23,8 +24,8 @@ cut_pmra_over_error = 10
 cut_pmdec_over_error = 10
 cut_radial_velocity_over_error = 10
 
-max_dist_pc = 3000 # pc
-cell_size_pc = 60 # pc
+max_dist_pc = 3000
+cell_size_pc = 60
 start_time = time.time()
 
 def verify_arguments():
@@ -75,6 +76,7 @@ metadata_fh.write("columns:%s\n" % str(all_columns))
 metadata_fh.write("columns_datatypes:%s" % str(all_columns_data_types))
 metadata_fh.close()
 
+# these are for quick lookups later
 parallax_idx = gaia_columns.index("parallax")
 parallax_error_idx = gaia_columns.index("parallax_error")
 ra_idx = gaia_columns.index("ra")
@@ -105,8 +107,7 @@ for i in range(0, len(all_columns)):
 create_table_str = "CREATE TABLE gaia (" + create_table_columns[:-1] + ")"
 insert_into_table_columns = ",".join(all_columns)
 
-num_cells_per_axis = (max_dist_pc*2)/cell_size_pc # ex from -3000 to 3000 divded by cell_size
-
+# just some global state variables
 skipped_no_parallax = 0
 skipped_cut_pmra = 0
 skipped_cut_pmdec = 0
@@ -154,10 +155,11 @@ def write_star(x, y, z, data):
     insertion_value_str = ",".join(data)
     insertion_str = "INSERT INTO gaia (" + insert_into_table_columns + ") VALUES (%s)" % insertion_value_str
 
+    # Gives the names for the database folders
     x_idx = int(x/cell_size_pc)
     y_idx = int(y/cell_size_pc)
     z_idx = int(z/cell_size_pc)
-    cell_dir = utils_path.append_many(dest_dir, [x_idx, y_idx, z_idx])
+    cell_dir = utils_path.append(dest_dir, "%+d/%+d/%+d" % (x_idx, y_idx, z_idx))
 
     if not os.path.isdir(cell_dir):
         os.makedirs(cell_dir)

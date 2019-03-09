@@ -1,3 +1,5 @@
+# Author: Karl Zylinski, Uppsala University
+
 def to_int(str):
     try:
         return int(str)

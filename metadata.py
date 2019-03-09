@@ -1,6 +1,6 @@
 # Author: Karl Zylinski, Uppsala University
 
-# metadata for raw_db
+# Parses metadata outputted along db
 
 import os
 

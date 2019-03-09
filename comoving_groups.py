@@ -1,6 +1,6 @@
 # Author: Karl Zylinski, Uppsala University
 
-# Reads an output-file from the find_comoving_stars* scripts, puts it into a dictionary
+# Reads an output-file from the find_comoving_group.py script, puts it into a dictionary
 
 import os
 

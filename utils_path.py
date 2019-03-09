@@ -1,3 +1,5 @@
+# Author: Karl Zylinski, Uppsala University
+
 def remove_extension(path):
     ext_sep = path.rfind(".")
 
