@@ -196,8 +196,7 @@ def find_comoving_to_star(star, in_group_sids):
     dec = star[i_dec]
     dist = star[i_dist]
 
-    vel_km_per_s = vec3.cartesian_velocity_from_celestial(ra, dec, dist*conv.parsec_to_km,
-        star[i_pmra]*conv.mas_per_yr_to_deg_per_s, star[i_pmdec]*conv.mas_per_yr_to_deg_per_s, star[i_rv])
+    vel_km_per_s = [star[i_vx], star[i_vy], star[i_vz]]
 
     vel_error_km_per_s = vec3.cartesian_velocity_from_celestial(ra, dec, dist*conv.parsec_to_km,
         star[i_pmra_error]*conv.mas_per_yr_to_deg_per_s, star[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s, star[i_rv_error])
@@ -214,15 +213,14 @@ def find_comoving_to_star(star, in_group_sids):
         pos_diff_len = vec3.len(vec3.sub(mcs_pos, pos))
 
         # Position cut
-        if pos_diff_len > maximum_final_separation_pc:# + pos_error_sum_len:
+        if pos_diff_len > maximum_final_separation_pc + pos_error_sum_len:
             continue
 
         mcs_ra = mcs[i_ra]
         mcs_dec = mcs[i_dec]
         mcs_dist = mcs[i_dist]
 
-        mcs_vel_km_per_s = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_dist*conv.parsec_to_km,
-            mcs[i_pmra]*conv.mas_per_yr_to_deg_per_s, mcs[i_pmdec]*conv.mas_per_yr_to_deg_per_s, mcs[i_rv])
+        mcs_vel_km_per_s = [mcs[i_vx], mcs[i_vy], mcs[i_vz]]
 
         mcs_vel_error_km_per_s = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_dist*conv.parsec_to_km,
             mcs[i_pmra_error]*conv.mas_per_yr_to_deg_per_s, mcs[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s, mcs[i_rv_error])
@@ -232,7 +230,7 @@ def find_comoving_to_star(star, in_group_sids):
         speed_diff = vec3.len(vec3.sub(mcs_vel_km_per_s, vel_km_per_s))
         
         # Velocity cut
-        if speed_diff > maximum_final_velocity_diff_km_per_s:# + vel_error_len_km_per_s + mcs_vel_error_len_km_per_s:
+        if speed_diff > maximum_final_velocity_diff_km_per_s + vel_error_len_km_per_s + mcs_vel_error_len_km_per_s:
             continue
 
         comoving_to_star.append(mcs)
@@ -240,7 +238,7 @@ def find_comoving_to_star(star, in_group_sids):
     if len(comoving_to_star) == 0:
         return []
 
-    # Important! Recursive call must not re-use already used star.
+    # Important! Makes sure that recursive call further down does not re-use already used star.
     in_group_sids.update(map(lambda x: x[i_sid], comoving_to_star))
     resulting_stars = comoving_to_star.copy()
 
