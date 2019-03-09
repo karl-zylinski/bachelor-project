@@ -8,11 +8,13 @@ import vec3
 import time
 import db_connection_cache
 
-# THIS FILE DOES THE FOLLOWING CUTS
-maximum_separation_pc = 20
-maximum_velocity_diff_km_s = 5
+maximum_broad_separation_pc = 20
+maximum_broad_velocity_diff_km_s = 5
+maximum_broad_velocity_diff_km_per_year = maximum_velocity_diff_km_s / conv.sec_to_year
 
-maximum_velocity_diff_km_per_year = maximum_velocity_diff_km_s / conv.sec_to_year
+maximum_final_separation_pc = 10
+maximum_final_velocity_diff_km_s = 1
+maximum_final_velocity_diff_km_per_year = maximum_final_velocity_diff_km_s / conv.sec_to_year
 
 def verify_arguments():
     if len(sys.argv) != 3:
@@ -56,19 +58,25 @@ max_cells_per_axis = int(max_dist_pc/cell_size_pc)
 cols = metadata["columns"]
 
 # Get indiices of relavant colums (quicker lookup)
-i_sid = comparison_cols.index("source_id")
-i_ra = comparison_cols.index("ra")
-i_dec = comparison_cols.index("dec")
-i_dist = comparison_cols.index("distance")
-i_pmra = comparison_cols.index("pmra")
-i_pmdec = comparison_cols.index("pmdec")
-i_rv = comparison_cols.index("radial_velocity")
-i_x = comparison_cols.index("x")
-i_y = comparison_cols.index("y")
-i_z = comparison_cols.index("z")
-i_vx = comparison_cols.index("vx")
-i_vy = comparison_cols.index("vy")
-i_vz = comparison_cols.index("vz")
+i_sid = cols.index("source_id")
+i_ra = cols.index("ra")
+i_dec = cols.index("dec")
+i_dist = cols.index("distance")
+i_pmra = cols.index("pmra")
+i_pmdec = cols.index("pmdec")
+i_rv = cols.index("radial_velocity")
+i_x = cols.index("x")
+i_y = cols.index("y")
+i_z = cols.index("z")
+i_vx = cols.index("vx")
+i_vy = cols.index("vy")
+i_vz = cols.index("vz")
+i_ra_error = cols.index("ra_error")
+i_dec_error = cols.index("dec_error")
+i_dist_error = cols.index("distance_error")
+i_pmra_error = cols.index("pmra_error")
+i_pmdec_error = cols.index("pmdec_error")
+i_rv_error = cols.index("radial_velocity_error")
 
 columns_to_fetch = ",".join(cols)
 comoving_groups = []
@@ -110,22 +118,22 @@ def find_comoving_to_star(star, in_group_sids):
     conn_filename = utils_path.append_many(db_folder, [str(x_idx), str(y_idx), str(z_idx), "cell.db"])
     conn = db_connection_cache.get(conn_filename, open_db_connections)
 
-    min_x = math.max(x - maximum_separation_pc, -maximum_separation_pc)
-    max_x = math.min(x + maximum_separation_pc, maximum_separation_pc)
-    min_y = math.max(y - maximum_separation_pc, -maximum_separation_pc)
-    max_y = math.min(y + maximum_separation_pc, maximum_separation_pc)
-    min_z = math.max(z - maximum_separation_pc, -maximum_separation_pc)
-    max_z = math.min(z + maximum_separation_pc, maximum_separation_pc)
+    min_x = math.max(x - maximum_broad_separation_pc, -maximum_broad_separation_pc)
+    max_x = math.min(x + maximum_broad_separation_pc, maximum_broad_separation_pc)
+    min_y = math.max(y - maximum_broad_separation_pc, -maximum_broad_separation_pc)
+    max_y = math.min(y + maximum_broad_separation_pc, maximum_broad_separation_pc)
+    min_z = math.max(z - maximum_broad_separation_pc, -maximum_broad_separation_pc)
+    max_z = math.min(z + maximum_broad_separation_pc, maximum_broad_separation_pc)
 
     vx = star[i_vx]
     vy = star[i_vy]
     vz = star[i_vz]
-    min_vx = vx - maximum_velocity_diff_km_per_year
-    max_vx = vx + maximum_velocity_diff_km_per_year
-    min_vy = vy - maximum_velocity_diff_km_per_year
-    max_vy = vy + maximum_velocity_diff_km_per_year
-    min_vz = vz - maximum_velocity_diff_km_per_year
-    max_vz = vz + maximum_velocity_diff_km_per_year
+    min_vx = vx - maximum_broad_velocity_diff_km_per_year
+    max_vx = vx + maximum_broad_velocity_diff_km_per_year
+    min_vy = vy - maximum_broad_velocity_diff_km_per_year
+    max_vy = vy + maximum_broad_velocity_diff_km_per_year
+    min_vz = vz - maximum_broad_velocity_diff_km_per_year
+    max_vz = vz + maximum_broad_velocity_diff_km_per_year
 
     find_nearby_query = '''
         SELECT %s
@@ -157,9 +165,15 @@ def find_comoving_to_star(star, in_group_sids):
         return []
 
     comoving_to_star = []
-    pos = vec3.cartesian_position_from_celestial(ra, dec, dist)
+    pos = [star[i_x], star[i_y],star[i_z]]
+    pos_error = vec3.cartesian_position_from_celestial(star[i_ra_error], star[i_dec_error], star[i_dist_error])
+    
     vel_km_per_year = vec3.cartesian_velocity_from_celestial(ra, dec, dist,
-        pmra * conv.mas_to_deg, pmdec * conv.mas_to_deg, rv / conv.sec_to_year)
+        star[i_pmra] * conv.mas_to_deg, star[i_pmdec] * conv.mas_to_deg, star[i_rv] / conv.sec_to_year)
+
+    vel_error_km_per_year = vec3.cartesian_velocity_from_celestial(ra, dec, dist,
+        star[i_pmra_error] * conv.mas_to_deg, star[i_pmdec_error] * conv.mas_to_deg, star[i_rv_error] / conv.sec_to_year)
+    vel_error_len_km_per_year = vec3.len(vel_error_km_per_year)
 
     for mcs in maybe_comoving_to_star:
         if star_sid_to_comoving_group_index.get(mcs[i_sid]) != None:
@@ -172,18 +186,24 @@ def find_comoving_to_star(star, in_group_sids):
         mcs_pmdec = mcs[i_pmdec]
         mcs_rv = mcs[i_rv]
 
-        mcs_pos = vec3.cartesian_position_from_celestial(mcs_ra, mcs_dec, mcs_dist)
+        mcs_pos = [mcs[i_x], mcs[i_y], mcs[i_z]]
+        mcs_pos_error = vec3.cartesian_position_from_celestial(mcs[i_ra_error], mcs[i_dec_error], mcs[i_dist_error])
+        pos_error_sum_len = vec3.len(vec3.sum(pos_error, mcs_pos_error))
         pos_diff_len = vec3.len(vec3.sub(mcs_pos, pos))
 
-        if pos_diff_len > maximum_separation_pc:
+        if pos_diff_len > maximum_final_separation_pc + pos_error_sum_len:
             continue
 
         mcs_vel_km_per_year = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_dist,
             mcs_pmra * conv.mas_to_deg, mcs_pmdec * conv.mas_to_deg, mcs_rv / conv.sec_to_year)
 
+        mcs_vel_error_km_per_year = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_dist,
+            mcs[i_pmra_error] * conv.mas_to_deg, mcs[i_pmdec_error] * conv.mas_to_deg, mcs[i_rv_error] / conv.sec_to_year)
+        mcs_vel_error_len_km_per_year = vec3.len(mcs_vel_error_km_per_year)
+
         speed_diff_km_per_year = vec3.len(vec3.sub(mcs_vel_km_per_year, vel_km_per_year)) 
         
-        if speed_diff_km_per_year > maximum_velocity_diff_km_per_year:
+        if speed_diff_km_per_year > maximum_final_velocity_diff_km_per_year + vel_error_len_km_per_year + mcs_vel_error_len_km_per_year:
             continue
 
         comoving_to_star.append(mcs)

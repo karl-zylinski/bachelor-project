@@ -23,7 +23,6 @@ cut_pmra_over_error = 10
 cut_pmdec_over_error = 10
 cut_radial_velocity_over_error = 10
 
-min_dist_pc = 0 # pc
 max_dist_pc = 3000 # pc
 cell_size_pc = 60 # pc
 start_time = time.time()
