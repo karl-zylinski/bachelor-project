@@ -20,3 +20,4 @@ __pycache__
 temp/
 galah_sids.txt
 *.cms
+db_*

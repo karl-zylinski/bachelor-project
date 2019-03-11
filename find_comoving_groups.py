@@ -26,6 +26,7 @@ import utils_path
 import math
 import vec3
 import db_connection_cache
+import time
 import utils_str
 import utils_dict
 
@@ -53,6 +54,7 @@ assert verify_arguments(), "Usage: find_comoving_cut1.py db_folder output.cms"
 
 db_folder = sys.argv[1]
 output_filename = sys.argv[2]
+start_time = time.time()
 
 # Get metadata that was written alongside db
 metadata_filename = utils_path.append(db_folder,"metadata")
@@ -249,6 +251,7 @@ def find_comoving_to_star(star, in_group_sids):
 
     return resulting_stars
 
+total_stars = metadata["total_stars"]
 total_stars_processed = 0
 open_db_connections = {} # Used by db_connection_cache to keep track of living databases.
 
@@ -260,13 +263,10 @@ def find_comoving_stars_in_cell(db_filename):
 
     conn = db_connection_cache.get(db_filename, open_db_connections)
     all_stars_select_str = "SELECT %s FROM gaia" % columns_to_fetch
-    all_stars = conn.execute(all_stars_select_str)
+    all_stars = conn.execute(all_stars_select_str).fetchall()
     
     for star in all_stars:
         total_stars_processed = total_stars_processed + 1
-
-        if total_stars_processed % 1000 == 0:
-            print("%d stars processsed" % total_stars_processed)
 
         sid = star[i_sid]
 
@@ -294,7 +294,11 @@ def find_comoving_stars_in_cell(db_filename):
 
         comoving_groups.append(group_object)
 
-        print("Found comoving group of size %d" % group_size)
+        cur_time = time.time()
+        time_elapsed = cur_time - start_time
+        time_left_h = ((time_elapsed/total_stars_processed)*(total_stars - total_stars_processed))/3600
+        
+        print("Found comoving group of size %d. %d/%d done. Time left: %.001f hours" % (group_size, total_stars_processed, total_stars, time_left_h))
 
     db_connection_cache.remove_unused(open_db_connections)
 
@@ -338,8 +342,6 @@ for ix_str in os.listdir(db_folder):
                 continue
 
             find_comoving_stars_in_cell(cell_db_filename)
-        break
-    break
 
 db_connection_cache.remove_all(open_db_connections)
 

@@ -254,9 +254,13 @@ for file in os.listdir(source_dir):
 # Flushes out everything to disk.
 db_connection_cache.remove_all(open_connections)
 
+metadata_fh = open("%s/metadata" % dest_dir, "w")
+metadata_fh.write("total_stars:%d\n" % total_counter)
+metadata_fh.close()
+
 end_time = time.time()
 dt = end_time - start_time
-print("Imported %d stars to raw gid databases" % total_counter)
+print("Imported %d stars to gridded database" % total_counter)
 print("Skipped %d because they lacked parallax" % skipped_no_parallax)
 print("Skipped %d because pmra over error was under %d" % (skipped_cut_pmra, cut_pmra_over_error))
 print("Skipped %d because pmdec over error was under %d" % (skipped_cut_pmdec, cut_pmdec_over_error))
