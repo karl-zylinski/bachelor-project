@@ -195,9 +195,10 @@ def find_comoving_to_star(star, in_group_sids):
         return []
 
     comoving_to_star = []
-    pos = [star[i_x], star[i_y],star[i_z]]
-    pos_error = vec3.cartesian_position_from_celestial(star[i_ra_error], star[i_dec_error], star[i_dist_error])
-    
+
+    pos = [star[i_x], star[i_y], star[i_z]]
+    vel_km_per_s = [star[i_vx], star[i_vy], star[i_vz]]
+
     ra = star[i_ra]
     dec = star[i_dec]
     dist_km = star[i_dist]*conv.parsec_to_km
@@ -210,8 +211,6 @@ def find_comoving_to_star(star, in_group_sids):
     pmra_error_deg_per_s = star[i_pmra_error]*conv.mas_per_yr_to_deg_per_s
     pmdec_error_deg_per_s = star[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s
     error_rv = star[i_rv_error]
-
-    vel_km_per_s = [star[i_vx], star[i_vy], star[i_vz]]
 
     for mcs in maybe_comoving_to_star:
         if star_sid_to_comoving_group_index.get(mcs[i_sid]) != None:

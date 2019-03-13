@@ -126,7 +126,7 @@ def celestial_magnitude_of_velocity_difference_error(
     pmdec2 = pmdec2_deg_per_s * conv.deg_to_rad
     pmdec2_error = pmdec2_error_deg_per_s * conv.deg_to_rad
 
-    # first, error propgate to vx, vy, vz (cartesian)
+    # first: error propgate to vx, vy, vz (cartesian)
 
     dvx1_dra = -cos(dec1)*sin(ra1)*rv1 + r1*cos(dec1)*cos(ra1)*pmra1 - r1*sin(dec1)*sin(ra1)*pmdec1
     dvx1_ddec = -sin(dec1)*cos(ra1)*rv1 - r1*sin(dec1)*sin(ra1)*pmra1 + r1*cos(dec1)*cos(ra1)*pmdec1
@@ -180,7 +180,8 @@ def celestial_magnitude_of_velocity_difference_error(
 
     v1 = cartesian_velocity_from_celestial(ra1, dec1, r1, pmra1, pmdec1, rv1)
     v2 = cartesian_velocity_from_celestial(ra2, dec2, r2, pmra2, pmdec2, rv2)
-    # now, error propagate |v2 - v1| = vdiff using vx, vy, vz errors (v2, v1 are vectors here)
+    
+    # now: error propagate |v2 - v1| = vdiff using vx, vy, vz errors (v2, v1 are vectors here)
 
     s = len(sub(v2, v1))
 
