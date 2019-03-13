@@ -185,7 +185,7 @@ def celestial_magnitude_of_velocity_difference_error(
 
     s = len(sub(v2, v1))
 
-    # note that abs(ds_vx1) == abs(ds_vx2), so we can use both for same since squared in error propagation
+    # note that abs(ds_vx1) == abs(ds_vx2), so we can use same expression for both since squared in error propagation
     # also, 1/s is already taken outside (see return statement)
     ds_dvx = (v2[0] - v1[0])
     ds_dvy = (v2[1] - v1[1])
