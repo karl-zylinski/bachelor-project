@@ -36,7 +36,9 @@ maximum_broad_velocity_diff_km_per_s = 5
 
 # After SQL query, a spherical comparison is done. These are then used combined with errors. We want tiny velocity difference!
 maximum_final_separation_pc = 10
-maximum_final_velocity_diff_km_per_s = 1
+maximum_final_velocity_diff_km_per_s = 0.1
+
+cut_parallax_over_error = 10
 
 def verify_arguments():
     if len(sys.argv) != 3:
@@ -96,6 +98,7 @@ i_dist_error = cols.index("distance_error")
 i_pmra_error = cols.index("pmra_error")
 i_pmdec_error = cols.index("pmdec_error")
 i_rv_error = cols.index("radial_velocity_error")
+i_parallax_over_error = cols.index("parallax_over_error")
 
 columns_to_fetch = ",".join(cols) # Used in SQL query
 comoving_groups = [] # This is where are found groups are stored
@@ -197,43 +200,65 @@ def find_comoving_to_star(star, in_group_sids):
     
     ra = star[i_ra]
     dec = star[i_dec]
-    dist = star[i_dist]
+    dist_km = star[i_dist]*conv.parsec_to_km
+    ra_error = star[i_ra_error]
+    dec_error = star[i_dec_error]
+    dist_km_error = star[i_dist_error]*conv.parsec_to_km
+    pmra_deg_per_s = star[i_pmra]*conv.mas_per_yr_to_deg_per_s
+    pmdec_deg_per_s = star[i_pmdec]*conv.mas_per_yr_to_deg_per_s
+    rv = star[i_rv]
+    pmra_error_deg_per_s = star[i_pmra_error]*conv.mas_per_yr_to_deg_per_s
+    pmdec_error_deg_per_s = star[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s
+    error_rv = star[i_rv_error]
 
     vel_km_per_s = [star[i_vx], star[i_vy], star[i_vz]]
-
-    vel_error_km_per_s = vec3.cartesian_velocity_from_celestial(ra, dec, dist*conv.parsec_to_km,
-        star[i_pmra_error]*conv.mas_per_yr_to_deg_per_s, star[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s, star[i_rv_error])
-
-    vel_error_len_km_per_s = vec3.len(vel_error_km_per_s)
 
     for mcs in maybe_comoving_to_star:
         if star_sid_to_comoving_group_index.get(mcs[i_sid]) != None:
             continue
 
-        mcs_pos = [mcs[i_x], mcs[i_y], mcs[i_z]]
-        mcs_pos_error = vec3.cartesian_position_from_celestial(mcs[i_ra_error], mcs[i_dec_error], mcs[i_dist_error])
-        pos_error_sum_len = vec3.len(vec3.add(pos_error, mcs_pos_error))
-        pos_diff_len = vec3.len(vec3.sub(mcs_pos, pos))
+        if mcs[i_parallax_over_error] < cut_parallax_over_error:
+            continue
 
-        # Position cut, with added length of vector sum of errors, in order to "extend radius" because of uncertainty
-        if pos_diff_len > maximum_final_separation_pc + pos_error_sum_len:
+        mcs_pos = [mcs[i_x], mcs[i_y], mcs[i_z]]
+        pos_diff_len = vec3.len(vec3.sub(mcs_pos, pos))
+        pos_diff_len_error = vec3.celestial_magnitude_of_position_difference_error(star[i_ra], star[i_dec], star[i_dist],
+                                star[i_ra_error], star[i_dec_error], star[i_dist_error],
+                                mcs[i_ra], mcs[i_dec], mcs[i_dist],
+                                mcs[i_ra_error], mcs[i_dec_error], mcs[i_dist_error])
+
+        # Position cut, with added 3*error
+        if pos_diff_len > maximum_final_separation_pc + 3*pos_diff_len_error:
             continue
 
         mcs_ra = mcs[i_ra]
         mcs_dec = mcs[i_dec]
-        mcs_dist = mcs[i_dist]
+        mcs_dist_km = mcs[i_dist]*conv.parsec_to_km
+        mcs_ra_error = mcs[i_ra_error]
+        mcs_dec_error = mcs[i_dec_error]
+        mcs_dist_km_error = mcs[i_dist_error]*conv.parsec_to_km
+        mcs_pmra_deg_per_s = mcs[i_pmra]*conv.mas_per_yr_to_deg_per_s
+        mcs_pmdec_deg_per_s = mcs[i_pmdec]*conv.mas_per_yr_to_deg_per_s
+        mcs_rv = mcs[i_rv]
+        mcs_pmra_error_deg_per_s = mcs[i_pmra_error]*conv.mas_per_yr_to_deg_per_s
+        mcs_pmdec_error_deg_per_s = mcs[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s
+        mcs_error_rv = mcs[i_rv_error]
 
         mcs_vel_km_per_s = [mcs[i_vx], mcs[i_vy], mcs[i_vz]]
-
-        mcs_vel_error_km_per_s = vec3.cartesian_velocity_from_celestial(mcs_ra, mcs_dec, mcs_dist*conv.parsec_to_km,
-            mcs[i_pmra_error]*conv.mas_per_yr_to_deg_per_s, mcs[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s, mcs[i_rv_error])
-
-        mcs_vel_error_len_km_per_s = vec3.len(mcs_vel_error_km_per_s)
-
         speed_diff = vec3.len(vec3.sub(mcs_vel_km_per_s, vel_km_per_s))
+
+        speed_diff_error = vec3.celestial_magnitude_of_velocity_difference_error(
+            mcs_ra, mcs_dec, mcs_dist_km,
+            mcs_ra_error, mcs_dec_error, mcs_dist_km_error,
+            mcs_pmra_deg_per_s, mcs_pmdec_deg_per_s, mcs_rv,
+            mcs_pmra_error_deg_per_s, mcs_pmdec_error_deg_per_s, mcs_error_rv,
+            ra, dec, dist_km,
+            ra_error, dec_error, dist_km_error,
+            pmra_deg_per_s, pmdec_deg_per_s, rv,
+            pmra_error_deg_per_s, pmdec_error_deg_per_s, error_rv)
         
-        # Velocity cut, with added errors of velocities. See this as "extending the radius" because of uncertainty
-        if speed_diff > maximum_final_velocity_diff_km_per_s + vel_error_len_km_per_s + mcs_vel_error_len_km_per_s:
+        # Velocity cut, with added 3*error
+        if speed_diff > maximum_final_velocity_diff_km_per_s + 3*speed_diff_error:
             continue
 
         comoving_to_star.append(mcs)
