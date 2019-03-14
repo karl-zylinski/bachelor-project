@@ -33,7 +33,10 @@ def cartesian_velocity_from_celestial(ra, dec, r, pmra, pmdec, rv):
 def celestial_position_diff(ra1, dec1, r1, ra2, dec2, r2):
     return sqrt(r1*r1 + r2*r2 - 2*r1*r2*(cos(dec1)*cos(dec2)*cos(ra1 - ra2) + sin(dec1)*sin(dec2)))
 
-# linear error propagation for difference of two celestial coordinates with errors in each component
+# Linear error propagation for difference of two celestial coordinates with errors in each component
+# in contrast to celestial_magnitude_of_velocity_difference_error I do not first propagate to
+# cartesian and then to coordinate difference expression, instead it goes straight from
+# celestial to expression.
 def celestial_magnitude_of_position_difference_error(ra1, dec1, r1,
                                         ra1_error, dec1_error, r1_error,
                                         ra2, dec2, r2,
@@ -55,7 +58,7 @@ def celestial_magnitude_of_position_difference_error(ra1, dec1, r1,
 # Linearly propagates the error of a velocity given in celestial coordinates to cartesian via the
 # formulas identical to the ones in function cartesian_velocity_from_celestial.
 # All angles in radians. Make sure to have same units for all times and distances.
-def celestial_coords_to_cartesian_error(
+def cartesian_velocity_from_celestial_error(
             ra, dec, r,
             ra_error, dec_error, r_error,
             pmra, pmdec, rv,
@@ -98,13 +101,13 @@ def celestial_magnitude_of_velocity_difference_error(
             ra2_error, dec2_error, r2_error,
             pmra2, pmdec2, rv2,
             pmra2_error, pmdec2_error, rv2_error):
-    v1_error = celestial_coords_to_cartesian_error(
+    v1_error = cartesian_velocity_from_celestial_error(
         ra1, dec1, r1,
         ra1_error, dec1_error, r1_error,
         pmra1, pmdec1, rv1,
         pmra1_error, pmdec1_error, rv1_error)
 
-    v2_error = celestial_coords_to_cartesian_error(
+    v2_error = cartesian_velocity_from_celestial_error(
         ra2, dec2, r2,
         ra2_error, dec2_error, r2_error,
         pmra2, pmdec2, rv2,
@@ -112,15 +115,11 @@ def celestial_magnitude_of_velocity_difference_error(
 
     v1 = cartesian_velocity_from_celestial(ra1, dec1, r1, pmra1, pmdec1, rv1)
     v2 = cartesian_velocity_from_celestial(ra2, dec2, r2, pmra2, pmdec2, rv2)
-    
-    s = mag(sub(v2, v1))
 
-    # note that abs(ds_vx1) == abs(ds_vx2), so we can use same expression
-    # for both since squared in error propagation also, 1/s is already
-    # taken outside (see return statement)
-    ds_dvx = (v2[0] - v1[0])
-    ds_dvy = (v2[1] - v1[1])
-    ds_dvz = (v2[2] - v1[2])
+    vdiff = sub(v2, v1)
+    s = mag(vdiff)
 
-    return (1/s)*sqrt((ds_dvx*v1_error[0])**2 + (ds_dvy*v1_error[1])**2 + (ds_dvz*v1_error[2])**2 + 
-                      (ds_dvx*v2_error[0])**2 + (ds_dvy*v2_error[1])**2 + (ds_dvz*v2_error[2])**2)
+    # Note that abs(diff(s, v1x)) == abs(diff(s, v2x)) == abs((v2[0] - v1[0])/s) == abs(vdiff[0]/s),
+    # so we can use same derivative in in propagation for v1 and v2 because always squared.
+    return (1/s)*sqrt((vdiff[0]*v1_error[0])**2 + (vdiff[1]*v1_error[1])**2 + (vdiff[2]*v1_error[2])**2 + 
+                      (vdiff[0]*v2_error[0])**2 + (vdiff[1]*v2_error[1])**2 + (vdiff[2]*v2_error[2])**2)
