@@ -64,7 +64,7 @@ for g in cg["groups"]:
     seps.append(sep)
     vel_diffs.append(vel_diff)
 
-plt.plot(seps, vel_diffs, ".", markersize=2)
+plt.plot(seps, vel_diffs, ".", markersize=1)
 plt.xlabel("Sepration (pc)")
 plt.ylabel("Velocity difference (km/s)")
 plt.xscale("log")

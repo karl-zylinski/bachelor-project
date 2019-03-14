@@ -255,7 +255,7 @@ for file in os.listdir(source_dir):
 # Flushes out everything to disk.
 db_connection_cache.remove_all(open_connections)
 
-metadata_fh = open("%s/metadata" % dest_dir, "w")
+metadata_fh = open("%s/metadata" % dest_dir, "a")
 metadata_fh.write("total_stars:%d\n" % total_counter)
 metadata_fh.close()
 

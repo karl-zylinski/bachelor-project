@@ -54,18 +54,6 @@ for ix_str in os.listdir(db_folder):
             conn = sqlite3.connect(cell_db_filename)
 
             try:
-                conn.execute("DROP INDEX index_ra")
-                conn.execute("DROP INDEX index_dec")
-                conn.execute("DROP INDEX index_parallax")
-                conn.execute("DROP INDEX index_pmra")
-                conn.execute("DROP INDEX index_pmdec")
-                conn.execute("DROP INDEX index_radial_velocity")
-                conn.execute("DROP INDEX index_distance")
-                print("Removed old indexes: %s" % cell_db_filename)
-            except:
-                print("Found no old indexes!")
-
-            try:
                 conn.execute("CREATE INDEX index_x ON gaia (x)")
                 conn.execute("CREATE INDEX index_y ON gaia (y)")
                 conn.execute("CREATE INDEX index_z ON gaia (z)")
