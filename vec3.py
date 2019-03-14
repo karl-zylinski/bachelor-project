@@ -55,6 +55,7 @@ def celestial_magnitude_of_position_difference_error(ra1, dec1, r1,
 
 # Linearly propagates the error of a velocity given in celestial coordinates to cartesian via the
 # formulas identical to the ones in function cartesian_velocity_from_celestial.
+# All angles in radians. Make sure to have same units for all times and distances.
 def celestial_coords_to_cartesian_error(
             ra, dec, r,
             ra_error, dec_error, r_error,
@@ -88,6 +89,7 @@ def celestial_coords_to_cartesian_error(
 # Linearly propagates the error of the expression |v2 - v1| where v2 and v1 are velocity vectors and
 # the errors are given in celestial coordinates. It first propagates the error
 # from celestial to cartesian velocity and then from cartesian velocity to the |v2 -v1| expression.
+# All angles in radians. Make sure to have same units for all times and distances.
 def celestial_magnitude_of_velocity_difference_error(
             ra1, dec1, r1,
             ra1_error, dec1_error, r1_error,
@@ -123,5 +125,3 @@ def celestial_magnitude_of_velocity_difference_error(
 
     return (1/s)*sqrt((ds_dvx*v1_error[0])**2 + (ds_dvy*v1_error[1])**2 + (ds_dvz*v1_error[2])**2 + 
                       (ds_dvx*v2_error[0])**2 + (ds_dvy*v2_error[1])**2 + (ds_dvz*v2_error[2])**2)
-
-
