@@ -29,6 +29,7 @@ cols = cg["columns"]
 i_source_id = cols.index("source_id")
 i_b = cols.index("b")
 i_dec = cols.index("dec")
+i_g = cols.index("phot_g_mean_mag")
 
 out_sids = []
 total = 0
@@ -54,7 +55,7 @@ for g in cg["groups"]:
         kept = kept + size
 
 out_cg = cg.copy()
-cg["groups"] = groups_within_cut
-utils_dict.write(cg, output_filename)
+out_cg["groups"] = groups_within_cut
+utils_dict.write(out_cg, output_filename)
 
 print("Kept %d out of %d" % (kept, total))
