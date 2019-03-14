@@ -199,17 +199,17 @@ def find_comoving_to_star(star, in_group_sids):
     pos = [star[i_x], star[i_y], star[i_z]]
     vel_km_per_s = [star[i_vx], star[i_vy], star[i_vz]]
 
-    ra = star[i_ra]
-    dec = star[i_dec]
-    dist_km = star[i_dist]*conv.parsec_to_km
-    ra_error = star[i_ra_error]
-    dec_error = star[i_dec_error]
-    dist_km_error = star[i_dist_error]*conv.parsec_to_km
-    pmra_deg_per_s = star[i_pmra]*conv.mas_per_yr_to_deg_per_s
-    pmdec_deg_per_s = star[i_pmdec]*conv.mas_per_yr_to_deg_per_s
+    ra = star[i_ra] * conv.deg_to_rad
+    dec = star[i_dec] * conv.deg_to_rad
+    dist = star[i_dist]
+    ra_error = star[i_ra_error] * conv.deg_to_rad
+    dec_error = star[i_dec_error] * conv.deg_to_rad
+    dist_error = star[i_dist_error]
+    pmra = star[i_pmra] * conv.mas_per_yr_to_rad_per_s
+    pmdec = star[i_pmdec] * conv.mas_per_yr_to_rad_per_s
     rv = star[i_rv]
-    pmra_error_deg_per_s = star[i_pmra_error]*conv.mas_per_yr_to_deg_per_s
-    pmdec_error_deg_per_s = star[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s
+    pmra_error = star[i_pmra_error] * conv.mas_per_yr_to_rad_per_s
+    pmdec_error = star[i_pmdec_error] * conv.mas_per_yr_to_rad_per_s
     error_rv = star[i_rv_error]
 
     for mcs in maybe_comoving_to_star:
@@ -221,40 +221,43 @@ def find_comoving_to_star(star, in_group_sids):
 
         mcs_pos = [mcs[i_x], mcs[i_y], mcs[i_z]]
         pos_diff_len = vec3.len(vec3.sub(mcs_pos, pos))
-        pos_diff_len_error = vec3.celestial_magnitude_of_position_difference_error(star[i_ra], star[i_dec], star[i_dist],
-                                star[i_ra_error], star[i_dec_error], star[i_dist_error],
-                                mcs[i_ra], mcs[i_dec], mcs[i_dist],
-                                mcs[i_ra_error], mcs[i_dec_error], mcs[i_dist_error])
+
+        mcs_ra = mcs[i_ra] * conv.deg_to_rad
+        mcs_dec = mcs[i_dec] * conv.deg_to_rad
+        mcs_dist = mcs[i_dist]
+        mcs_ra_error = mcs[i_ra_error] * conv.deg_to_rad
+        mcs_dec_error = mcs[i_dec_error] * conv.deg_to_rad
+        mcs_dist_error = mcs[i_dist_error]
+
+        pos_diff_len_error = vec3.celestial_magnitude_of_position_difference_error(
+                                ra, dec, dist,
+                                ra_error, dec_error, dist_error,
+                                mcs_ra, mcs_dec, mcs_dist,
+                                mcs_ra_error, mcs_dec_error, mcs_dist_error)
 
         # Position cut, with added 3*error
         if pos_diff_len > maximum_final_separation_pc + 3*pos_diff_len_error:
             continue
 
-        mcs_ra = mcs[i_ra]
-        mcs_dec = mcs[i_dec]
-        mcs_dist_km = mcs[i_dist]*conv.parsec_to_km
-        mcs_ra_error = mcs[i_ra_error]
-        mcs_dec_error = mcs[i_dec_error]
-        mcs_dist_km_error = mcs[i_dist_error]*conv.parsec_to_km
-        mcs_pmra_deg_per_s = mcs[i_pmra]*conv.mas_per_yr_to_deg_per_s
-        mcs_pmdec_deg_per_s = mcs[i_pmdec]*conv.mas_per_yr_to_deg_per_s
+        mcs_pmra = mcs[i_pmra]*conv.mas_per_yr_to_rad_per_s
+        mcs_pmdec = mcs[i_pmdec]*conv.mas_per_yr_to_rad_per_s
         mcs_rv = mcs[i_rv]
-        mcs_pmra_error_deg_per_s = mcs[i_pmra_error]*conv.mas_per_yr_to_deg_per_s
-        mcs_pmdec_error_deg_per_s = mcs[i_pmdec_error]*conv.mas_per_yr_to_deg_per_s
+        mcs_pmra_error = mcs[i_pmra_error]*conv.mas_per_yr_to_rad_per_s
+        mcs_pmdec_error = mcs[i_pmdec_error]*conv.mas_per_yr_to_rad_per_s
         mcs_error_rv = mcs[i_rv_error]
 
         mcs_vel_km_per_s = [mcs[i_vx], mcs[i_vy], mcs[i_vz]]
         speed_diff = vec3.len(vec3.sub(mcs_vel_km_per_s, vel_km_per_s))
 
         speed_diff_error = vec3.celestial_magnitude_of_velocity_difference_error(
-            mcs_ra, mcs_dec, mcs_dist_km,
-            mcs_ra_error, mcs_dec_error, mcs_dist_km_error,
-            mcs_pmra_deg_per_s, mcs_pmdec_deg_per_s, mcs_rv,
-            mcs_pmra_error_deg_per_s, mcs_pmdec_error_deg_per_s, mcs_error_rv,
-            ra, dec, dist_km,
-            ra_error, dec_error, dist_km_error,
-            pmra_deg_per_s, pmdec_deg_per_s, rv,
-            pmra_error_deg_per_s, pmdec_error_deg_per_s, error_rv)
+            mcs_ra, mcs_dec, mcs_dist * conv.pc_to_km,
+            mcs_ra_error, mcs_dec_error, mcs_dist_error * conv.pc_to_km,
+            mcs_pmra, mcs_pmdec, mcs_rv,
+            mcs_pmra_error, mcs_pmdec_error, mcs_error_rv,
+            ra, dec, dist * conv.pc_to_km,
+            ra_error, dec_error, dist_error * conv.pc_to_km,
+            pmra, pmdec, rv,
+            pmra_error, pmdec_error, error_rv)
         
         # Velocity cut, with added 3*error
         if speed_diff > maximum_final_velocity_diff_km_per_s + 3*speed_diff_error:

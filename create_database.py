@@ -206,19 +206,19 @@ for file in os.listdir(source_dir):
             else:
                 dest_values[idx] = stripped_val
 
-        parallax = float(dest_values[parallax_idx])
+        parallax = abs(float(dest_values[parallax_idx]))
         parallax_error = float(dest_values[parallax_error_idx])
-        distance = 1.0/(parallax/1000.0) # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
-        distance_error = 1000*(parallax_error/(parallax*parallax)) # by error propagation of d = 1000/p (p in mas)
-        dest_values[distance_idx] = str(distance)
-        dest_values[distance_error_idx] = str(distance_error)
+        distance_pc = 1.0/(parallax/1000.0) # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
+        distance_pc_error = 1000*(parallax_error/(parallax*parallax)) # by error propagation of d = 1000/p (p in mas)
+        dest_values[distance_idx] = str(distance_pc)
+        dest_values[distance_error_idx] = str(distance_pc_error)
 
-        ra = float(dest_values[ra_idx])
-        dec = float(dest_values[dec_idx])
-        pos = vec3.cartesian_position_from_celestial(ra, dec, distance)
-        x = pos[0]
-        y = pos[1]
-        z = pos[2]
+        ra = float(dest_values[ra_idx]) * conv.deg_to_rad
+        dec = float(dest_values[dec_idx]) * conv.deg_to_rad
+        pos_pc = vec3.cartesian_position_from_celestial(ra, dec, distance_pc)
+        x = pos_pc[0]
+        y = pos_pc[1]
+        z = pos_pc[2]
 
         if (x < -max_dist_pc or x > max_dist_pc or
             y < -max_dist_pc or y > max_dist_pc or
@@ -229,11 +229,10 @@ for file in os.listdir(source_dir):
         dest_values[y_idx] = str(y)
         dest_values[z_idx] = str(z)
 
-        pmra_deg_per_s = float(dest_values[pmra_idx]) * conv.mas_per_yr_to_deg_per_s
-        pmdec_deg_per_s = float(dest_values[pmdec_idx]) * conv.mas_per_yr_to_deg_per_s
-        vrad_km_per_s = float(dest_values[radial_velocity_idx])
-        distance_km = distance*conv.parsec_to_km
-        vel_km_per_s = vec3.cartesian_velocity_from_celestial(ra, dec, distance_km, pmra_deg_per_s, pmdec_deg_per_s, vrad_km_per_s)
+        pmra = float(dest_values[pmra_idx]) * conv.mas_per_yr_to_rad_per_s
+        pmdec = float(dest_values[pmdec_idx]) * conv.mas_per_yr_to_rad_per_s
+        vrad = float(dest_values[radial_velocity_idx])
+        vel_km_per_s = vec3.cartesian_velocity_from_celestial(ra, dec, distance_pc*conv.pc_to_km, pmra, pmdec, vrad)
 
         dest_values[vx_idx] = str(vel_km_per_s[0])
         dest_values[vy_idx] = str(vel_km_per_s[1])
@@ -262,6 +261,7 @@ end_time = time.time()
 dt = end_time - start_time
 print("Imported %d stars to gridded database" % total_counter)
 print("Skipped %d because they lacked parallax" % skipped_no_parallax)
+print("Skipped %d because they has negative parallax" % skipped_negative_parallax)
 print("Skipped %d because pmra over error was under %d" % (skipped_cut_pmra, cut_pmra_over_error))
 print("Skipped %d because pmdec over error was under %d" % (skipped_cut_pmdec, cut_pmdec_over_error))
 print("Skipped %d because radial_velocity over error was under %d" % (skipped_cut_radial_velocity, cut_radial_velocity_over_error))
