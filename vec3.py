@@ -3,7 +3,7 @@
 from math import sqrt, cos, sin
 import conv
 
-def len(v):
+def mag(v):
     return sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
 
 def dot(v1, v2):
@@ -112,7 +112,7 @@ def celestial_magnitude_of_velocity_difference_error(
     v1 = cartesian_velocity_from_celestial(ra1, dec1, r1, pmra1, pmdec1, rv1)
     v2 = cartesian_velocity_from_celestial(ra2, dec2, r2, pmra2, pmdec2, rv2)
     
-    s = len(sub(v2, v1))
+    s = mag(sub(v2, v1))
 
     # note that abs(ds_vx1) == abs(ds_vx2), so we can use same expression
     # for both since squared in error propagation also, 1/s is already

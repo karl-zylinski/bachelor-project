@@ -56,10 +56,10 @@ for g in cg["groups"]:
 
     pos1 = [x1, y1, z1]
     pos2 = [x2, y2, z2]
-    sep = vec3.len(vec3.sub(pos2, pos1))
+    sep = vec3.mag(vec3.sub(pos2, pos1))
     v1 = [vx1, vy1, vz1]
     v2 = [vx2, vy2, vz2]
-    vel_diff = vec3.len(vec3.sub(v2, v1))
+    vel_diff = vec3.mag(vec3.sub(v2, v1))
 
     seps.append(sep)
     vel_diffs.append(vel_diff)

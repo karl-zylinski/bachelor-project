@@ -220,7 +220,7 @@ def find_comoving_to_star(star, in_group_sids):
             continue
 
         mcs_pos = [mcs[i_x], mcs[i_y], mcs[i_z]]
-        pos_diff_len = vec3.len(vec3.sub(mcs_pos, pos))
+        pos_diff_len = vec3.mag(vec3.sub(mcs_pos, pos))
 
         mcs_ra = mcs[i_ra] * conv.deg_to_rad
         mcs_dec = mcs[i_dec] * conv.deg_to_rad
@@ -247,7 +247,7 @@ def find_comoving_to_star(star, in_group_sids):
         mcs_error_rv = mcs[i_rv_error]
 
         mcs_vel_km_per_s = [mcs[i_vx], mcs[i_vy], mcs[i_vz]]
-        speed_diff = vec3.len(vec3.sub(mcs_vel_km_per_s, vel_km_per_s))
+        speed_diff = vec3.mag(vec3.sub(mcs_vel_km_per_s, vel_km_per_s))
 
         speed_diff_error = vec3.celestial_magnitude_of_velocity_difference_error(
             mcs_ra, mcs_dec, mcs_dist * conv.pc_to_km,
