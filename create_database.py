@@ -206,6 +206,8 @@ for file in os.listdir(source_dir):
             else:
                 dest_values[idx] = stripped_val
 
+        # Almost criminal to do abs here, but I'm only interested in distances up to 3 kpc so
+        # i think its fine. Also, 1/parallax does not work for large distances, but 3kpc is kindof an upper limit.
         parallax = abs(float(dest_values[parallax_idx]))
         parallax_error = float(dest_values[parallax_error_idx])
         distance_pc = 1.0/(parallax/1000.0) # distance from parallax, parallax in mArcSec, hence conversion to ArcSec
@@ -261,7 +263,6 @@ end_time = time.time()
 dt = end_time - start_time
 print("Imported %d stars to gridded database" % total_counter)
 print("Skipped %d because they lacked parallax" % skipped_no_parallax)
-print("Skipped %d because they has negative parallax" % skipped_negative_parallax)
 print("Skipped %d because pmra over error was under %d" % (skipped_cut_pmra, cut_pmra_over_error))
 print("Skipped %d because pmdec over error was under %d" % (skipped_cut_pmdec, cut_pmdec_over_error))
 print("Skipped %d because radial_velocity over error was under %d" % (skipped_cut_radial_velocity, cut_radial_velocity_over_error))

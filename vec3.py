@@ -1,7 +1,6 @@
 # Author: Karl Zylinski, Uppsala University
 
 from math import sqrt, cos, sin
-import conv
 
 def mag(v):
     return sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2])
