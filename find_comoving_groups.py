@@ -36,7 +36,7 @@ maximum_broad_velocity_diff_km_per_s = 5
 
 # After SQL query, a spherical comparison is done. These are then used combined with errors. We want tiny velocity difference!
 maximum_final_separation_pc = 10
-maximum_final_velocity_diff_km_per_s = 0.001 # max vel difference to stay within 10 pc over 10^10 years
+maximum_final_velocity_diff_km_per_s = 1 # max vel difference to stay within 10 pc over 10^10 years
 
 cut_parallax_over_error = 10
 

@@ -38,7 +38,7 @@ colors = []
 found_groups = cg["groups"]
 
 for g in found_groups:
-    if g["size"] < 3:
+    if g["size"] < 4:
         continue
 
     color = [random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1)]
