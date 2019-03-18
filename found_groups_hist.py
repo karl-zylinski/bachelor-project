@@ -19,9 +19,10 @@ def verify_arguments():
 
     return True
 
-assert verify_arguments(), "Usage: found_groups_hist.py file col bins"
+assert verify_arguments(), "Usage: found_groups_hist.py file col bins log"
 input_filename = sys.argv[1]
 col = sys.argv[2]
+log_x = len(sys.argv) == 5 and sys.argv[4] == "log"
 bins = None
 
 if len(sys.argv) == 4:
@@ -44,4 +45,8 @@ for g in cg["groups"]:
 plt.hist(data_col, bins)
 plt.xlabel(col)
 plt.ylabel("Count")
+
+if log_x:
+    plt.xscale("log")
+
 plt.show()
