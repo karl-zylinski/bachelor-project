@@ -17,6 +17,7 @@ metadata
 db_gaia_dr2*
 __pycache__
 *.iso.cmd
+*.iso
 temp/
 galah_sids.txt
 *.cms

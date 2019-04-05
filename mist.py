@@ -3,6 +3,7 @@
 # Tools for working with MIST isochrones
 
 from functools import reduce
+import pickle
 
 def _is_comment(line):
     for c in line:
@@ -48,3 +49,14 @@ def parse_isochrones(path):
         line = fh.readline()
 
     return all_isochrones
+
+def save_isochrones(isos, path):
+    f = open(path, "wb")
+    pickle.dump(iso, f)
+    f.close()
+
+def load_isochrones(path):
+    f = open(path, "rb")
+    iso = pickle.load(f)
+    f.close()
+    return iso

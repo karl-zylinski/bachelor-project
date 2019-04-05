@@ -1,0 +1,82 @@
+\documentclass[twocolumn]{aastex62}
+\newcommand*{\doilink}[1]{\href{https://doi.org/#1}{\nolinkurl{#1}}}
+\usepackage{natbib}
+\usepackage{float}
+
+\begin{document}
+\title{Finding new atomic-diffusion stellar laboratories with Gaia}
+\author{Karl Zylinski}
+\affil{Department of Astronomy and Space Physics, Uppsala University, Sweden}
+
+\author{Andreas Korn (supervisor)}
+\affil{Department of Astronomy and Space Physics, Uppsala University, Sweden}
+
+\author{Eric Stempels (supervisor)}
+\affil{Department of Astronomy and Space Physics, Uppsala University, Sweden}
+
+\author{Bengt Edvardsson (subject reviewer)}
+\affil{Department of Astronomy and Space Physics, Uppsala University, Sweden}
+
+\correspondingauthor{Karl Zylinski}
+\email{karl@zylinski.se}
+
+\date{\today}
+
+\begin{abstract}
+There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. There is no abstract. \\
+\end{abstract}
+
+\section{Introduction}
+Spectroscopy provides information about the abundances of elements in the atmosphere of a star. In late type stars (spectral class G, K or M, which are of special interest in this project) absorption is the primary source of lines. These lines are caused by photons escaping the innards of the star and subsequently being absorbed in by the atmosphere \citep{Kartunnen_p227}.
+
+Historically, the atmospheres of late type stars on the main sequence were assumed representative of the progenitor clouds (PCs) from which they were born, but during the last decades the theory of atomic diffusion in stars has brought the insight that heavy elements may sink to deeper layers. Therefore, errors are introduced when measuring stellar surface abundances using spectroscopy and subsequently assuming them to be representative of the PC. For old stars ($12-14$ Gyr), knowing the abundances of the PC tells us how the Galaxy looked when it was young, which is of importance for galactic archaeology. If the stellar atmosphere cannot be used to directly infer PC abundances, are there any theoretical corrections that make up for the error? Atomic diffusion models can be used to calculate such corrections. These models predict how heavy elements sink towards the center of the star, leaving the atmosphere with lower metallicity. \cite{Korn} has previously found the size of such errors by comparing stars in globular clusters. More data on how different types of stars behave with respect to diffusion is needed in order to improve the models.
+
+A method for gathering more data on atomic diffusion is to compare the measured abundances in two stars where one is affected by atomic diffusion and the other is well mixed, as will be explained in section \ref{sec:theory_atomic_diffusion} such a pair may be a turnoff-point (TOP) star and a star at the red giant branch bump (bRGB star). While \cite{Korn} used globular clusters for finding their stellar laboratories, in this project we attempt to use pairs of co-moving stars. Finding such a pair can be done by locating binary or co-moving stars and then making sure that they lie on the same isochrone. \cite{Oh} has previously used Gaia data release 1 (Gaia DR1, \url{http://sci.esa.int/gaia/}) to locate co-moving stars. Gaia DR1 lacks radial velocities, so Oh et al. used a probabilistic approach. Gaia data release 2 (Gaia DR2) has radial velocities for 7 million stars \citep{GaiaDR2}, so one can use more direct methods where positions and velocities are directly compared. Constraining the common origin of the co-moving pairs can be done by fitting them onto isochrones. We can see isochrones as functions that give stellar parameters for similarly aged stars that had similar initial composition, but different initial mass \citep{Dotter}. The MIST project (\url{http://waps.cfa.harvard.edu/MIST/}) provides isochrones that are compatible with the magnitude scales that Gaia uses. Since the TOP star is affected by atomic diffusion while the bRGB star is well mixed (in the outer layers), the difference in metallicity between them gives a measurement of how effective atomic diffusion is in the TOP star.
+
+Since old stars are of interest and tend to have low metallicity, one can cross-correlate the found co-moving pairs with a survey that gives  high-precision metallicities and then only keep those below some threshold value. The GALAH survey (\url{https://galah-survey.org/}) gives such data and we [something about getting dat from them and a referened paper, perhaps a spec about the survey].
+
+The goal of this project is to find stellar laboratories which can be used to improve the accuracy of atomic diffusion models. In order to actually use these stars to improve the atomic diffusion models, high-precision measurements have to be done of the found pairs, this is a potential follow-up project.
+
+This paper is organised as follows, section blabla.
+
+\section{Theory}
+\subsection{Evolution solar mass stars up to the RGB bump}
+Here we give a short overview of the evolution of solar mass stars from the TOP to the red giant branch bump. The reason for only describing solar mass stars is that we have a high age requirement, more massive stars will already have died.
+
+Stars live most of their lives on the main sequence, but as hydrogen is depleted in the core, the star contracts and the temperature increases enough for hydrogen to start burning in a shell around the helium core. The shell reaches a temperature high enough ($20\times10^6$ K) for the the CNO-cycle to dominate. This makes the radiation pressure higher than in the previous evolutionary stages and the star has to expand in order to reach a new equilibrium. It leaves the main sequence and evolves along the sub-giant branch (SGB) and the subsequent red-giant branch \citep{BV3_pp172_174}.
+
+The shell slowly burns its way out as the radius increases and two important things happen: the first dredge-up and the subsequent RGB bump. As the radius increases the surface temperature $T_{eff}$ decreases. Stars of solar mass or less have an outer convection zone. The depth of the zone is temperature dependent because ionization decreases with temperature, making it easier for the radiation to transfer momentum to the matter. This deepens the convection zone, eventually making it reach the burning shell. At this point processed nuclear matter is brought up to the surface, making it possible to see them in the spectra. This is the first drege-up. This dredge-up has the side-effect that it pulls up hydrogen-deficient material above the burning shell. When the shell later burns its way to this area, there is less material to burn and the evolution is temporarily halted. This makes stars bunch up at a point in the HR-diagram called the RGB bump. The RGB bump is where we will look for the giant companion in our pairs simply because there are many stars there.
+
+The star then continues its way up the RGB branch, but the remaining evolution is of little interest to this project.
+
+\subsection{Stellar atomic diffusion}
+\label{sec:theory_atomic_diffusion}
+Diffusion is a process where material is slowly moved by molecular displacement, in a star it can cause atoms and molecules to sink or rise. There are several stellar properties that can be taken into account when studying diffusion such as: gravitational force, gas pressure, temperature gradient and radiation pressure. Here we only give a simplified overview, for a review see \cite{Vauclair}.
+
+For the timescales at which diffusion works, it would take longer than the lifetime of the star to diffuse elements to the deep layers, but diffusion down to shallow layers is possible. In the deep layers the gas pressure is high, collisions more common and the diffusion velocity is thus lowered. At more shallow layers the pressure is lower and diffusion can happen at shorter timescales, such as $10^5$ years \citep{BV1_pp136_140}. As mentioned in the previous subsection, main-sequence star with mass less than the sun have an outer convection zone that gets deeper the less massive the star is. Matter that is moved to the bottom of the convection zone can overshoot the zone and end up outside it. This matter is now in a non-convection zone where radiation pressure dominates. Momentum is transferred from photons to the atoms by absorption. For highly ionized matter or matter with high ionization energy, the radiation has a harder time working against the gravitational forces. This is how matter can sink and thus be hidden away from the spectra.
+
+As explained in the previous subsection, the convection zone grows as the star evolves along the RGB, eventually reaching to depths where atomic diffusion becomes inefficient due to the high gas pressure (REF REF REF!!!!). For RGB bump (bRGB) stars this depth of convection has already been reached and the diffused matter has been remixed into the upper layers of the star. It can thus be assumed that the bRGB stars have spectral abundances similar to those of its PC. This is why the comparison between the TOP star and bRGB star abundances give the abundance error introduced by atomic diffusion, given that we are certain that the stars share a common origin.
+
+The temperature gradient is only of importance at the bottom of very deep convection zones or out in the corona \citep{Shine}. 
+
+\subsection{Isochrones}
+
+\begin{figure}
+\epsscale{1.15}
+\plotone{iso_example.eps}
+\caption{Examples of isochrones for $10^{10}$ Gyr stars, each track is for a different [Fe/H] value. Shows only main sequence and early evolutionary stages. Plotted using MIST isochrones \citep{Dotter}.}
+\label{fig:iso_example}
+\end{figure}
+
+If a large quantity of stars are born at the same time, from the same PC, but differ in mass, they will fall upon the same isochrone. Isochrones can be viewed as functions that output stellar parameters based on initial abundances (usually metallicity) and initial mass. In Fig. \ref{fig:iso_example} isochrones for five different metallicities (actually iron relative hydrogen abundance [Fe/H]) are seen. The further along the line one travels, the higher the initial stellar mass. Here we have plotted luminosity $L$ against effective temperature $T_{eff}$, but there are a host of other parameters one could plot. If two stars have similar position, similar velocity and fall upon the same isochrone, one can be fairly sure that they were born together. See \cite{Dotter} for a both physical and technical introduction on how these isochrones were constructed.
+
+
+\section{Method}
+\section{Results}
+\section{Discussion and future outlook}
+
+
+\bibliographystyle{aasjournal}
+\bibliography{bib}
+
+\end{document}
