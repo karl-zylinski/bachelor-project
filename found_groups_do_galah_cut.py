@@ -50,7 +50,7 @@ for g in cg["groups"]:
     avg_b = avg_b / size
     avg_dec = avg_dec / size
 
-    if abs(avg_b) > 9 and avg_dec < 11: # do 1 deg more just to be safe
+    if avg_dec < 35:
         groups_within_cut.append(g)
         kept = kept + size
 
