@@ -52,7 +52,7 @@ def parse_isochrones(path):
 
 def save_isochrones(isos, path):
     f = open(path, "wb")
-    pickle.dump(iso, f)
+    pickle.dump(isos, f)
     f.close()
 
 def load_isochrones(path):

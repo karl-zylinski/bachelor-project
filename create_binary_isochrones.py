@@ -5,10 +5,11 @@
 import os
 import mist
 
-for file in os.listdir("isochrones"):
+path = "isochrones/for_5921751752101964416"
+for file in os.listdir(path):
     if not file.endswith(".iso.cmd"):
         continue
 
     output_name = file[0:-4]
-    iso = mist.parse_isochrones("isochrones/%s" % file)
-    mist.save_isochrones(iso, "isochrones/%s" % output_name)
+    iso = mist.parse_isochrones("%s/%s" % (path, file))
+    mist.save_isochrones(iso, "%s/%s" % (path, output_name))
