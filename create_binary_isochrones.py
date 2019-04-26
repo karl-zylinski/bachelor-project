@@ -5,7 +5,7 @@
 import os
 import mist
 
-path = "isochrones/for_5921751752101964416"
+path = "isochrones/for_2330"
 for file in os.listdir(path):
     if not file.endswith(".iso.cmd"):
         continue

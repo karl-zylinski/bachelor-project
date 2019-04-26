@@ -36,6 +36,9 @@ for g in cg["groups"]:
         if s[i_col] == None or s[i_col] > lim:
             continue
 
-        print(g)
+        print(s[cols.index("source_id")])
+        print(s[cols.index("feh")])
+        print(s[i_col])
+        print()
         break
 
