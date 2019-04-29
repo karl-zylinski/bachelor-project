@@ -1,0 +1,10 @@
+{
+"isochrones": {
+    0.372: "isochrones/for_18778/feh+0.37177462.iso",
+    -1.09: "isochrones/for_18778/feh-1.0870304.iso",
+    -2.55: "isochrones/for_18778/feh-2.54583542.iso" },
+"teff": numpy.log10([3500.0, 4273.3003]),
+"mags": [9.883364, 13.578179],
+"distances": [1864.7306354736843, 1871.298532837807],
+"exts": [0, 0]
+}

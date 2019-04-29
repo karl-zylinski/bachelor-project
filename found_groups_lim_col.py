@@ -33,11 +33,11 @@ data_col = []
 
 for g in cg["groups"]:
     for s in g["stars"]:
-        if s[i_col] == None or s[i_col] > lim:
+        if s[i_col] == None or s[i_col] < lim:
             continue
 
         print(s[cols.index("source_id")])
-        print(s[cols.index("feh")])
+        print(s[cols.index("efeh")])
         print(s[i_col])
         print()
         break

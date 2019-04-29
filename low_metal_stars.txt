@@ -1,6 +1,8 @@
 -------------------------------
 5281825062636445696 -1.5776529 2330
 
+BAD: Plotted against isos, before TOP for 1 to 14 Gyr
+
 source_id GalahID phot_g_mean_mag teff eteff feh efeh teff_val logg distance distance_error a_g_val
 5281825062636445696     170110002101302 11.25518        4208.608        1244.718        -1.5776529  0.8044996   4985.3335       4.056447        97.80464222185262       8.617363718287706      0.503
 5213358473574080896     None    10.083699       None    None    None    None    5648.0  None    107.93788932831916      0.2887870214925062      0.0253
@@ -18,7 +20,7 @@ pmra pmra_error pmdec pmdec_error radial_velocity radial_velocity_error distance
 -------------------------------
 4877543948590996096 -2.6143932 5541
 
-BAD - 2152 at end of GalahID means bad average
+BAD: 2152 at end of GalahID means bad average, left with a 0.18 metallicity star
 
 source_id GalahID phot_g_mean_mag teff eteff feh efeh teff_val logg distance distance_error a_g_val
 4877543948590996096     150112002501152 12.772159       4892.4385       222.70065       0.18173504  0.20435625  4845.5474       4.5908413       204.1210011567421       1.007627590351203      0.114
@@ -40,6 +42,8 @@ pmra pmra_error pmdec pmdec_error radial_velocity radial_velocity_error distance
 -------------------------------
 3038333536768267776 -2.3067646 34911
 
+BAD: Two different metallicities (-0.23 and -2.3)
+
 source_id GalahID phot_g_mean_mag teff eteff feh efeh teff_val logg distance distance_error a_g_val
 3038316185100360320     160130003101013 11.567876       5217.388        347.48306       -0.23652935 0.27272448  4989.8003       2.9822533       1301.6401564700996      71.90046925617379      None
 3038333536768267776     160130003101010 9.866051        3444.9214       167.89215       -2.3067646  0.3287125   3608.5  0.6999064       1299.0087643896595      174.67884793761323     None
@@ -56,6 +60,8 @@ pmra pmra_error pmdec pmdec_error radial_velocity radial_velocity_error distance
 
 -------------------------------
 5921751752101964416 -2.0323849 39429
+
+BAD: See plots
 
 source_id GalahID phot_g_mean_mag teff eteff feh efeh teff_val logg distance distance_error a_g_val
 5921751752101964416     160419005101051 12.256209       4870.7466       221.12856       -2.0323849  0.26718557  4955.67 2.0653608       2491.7314261117835      234.71688956762216      None

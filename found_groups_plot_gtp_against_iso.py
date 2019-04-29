@@ -9,13 +9,30 @@ import numpy
 import matplotlib.pyplot as plt
 import mist
 import utils_dict
+import utils_path
 
-ages = numpy.arange(5*10**9, 14*10**9+1, 5*10**8)
+def verify_arguments():
+    if len(sys.argv) != 3:
+        return False
+
+    if not os.path.isfile(sys.argv[1]):
+        return False
+
+    return True
+
+assert verify_arguments(), "Usage: found_groups_plot_against_iso.py file.gtp output_dir"
+input_filename = sys.argv[1]
+output_dir = sys.argv[2]
+
+if not os.path.isdir(output_dir):
+    os.mkdir(output_dir)
+
+gtp_f = open(input_filename, "r")
+gtp = eval(gtp_f.read())
+gtp_f.close()
+ages = numpy.arange(1*10**9, 14*10**9+1, 5*10**8)
 log10_ages = numpy.log10(ages)
-iso_paths = {
-    0.0313: "isochrones/for_2330/feh+0.0313.iso",
-    -1.578: "isochrones/for_2330/feh-1.578.iso",
-    -3.19: "isochrones/for_2330/feh-3.19.iso" }
+iso_paths = gtp["isochrones"]
 
 all_isos = {}
 for metallicty, path in iso_paths.items():
@@ -43,15 +60,15 @@ for l10age in log10_ages:
     }
     isos_by_age.append(iso_by_age)
 
-distances = [97.80464222185262, 107.93788932831916]
-exts = [0.503, 0.0253]
-mags = [11.25518, 10.083699]
+distances = gtp["distances"]
+exts = gtp["exts"]
+mags = gtp["mags"]
 
 abs_mags = []
 for i in range(0, len(mags)):
     abs_mags.append(mags[i] - 5*numpy.log10(distances[i]) + 5 - exts[i])
 
-gaia_lteff = numpy.log10([4985.3335, 5648.0])
+teff = gtp["teff"]
 
 file_index = 0
 for iba in isos_by_age:
@@ -75,13 +92,13 @@ for iba in isos_by_age:
         plt.ylabel('gaia G')
         legend.append(str(metallicity))
 
-    for i in range(0, len(gaia_lteff)):
-        plt.plot(gaia_lteff[i], abs_mags[i], '.', markersize=5)
+    for i in range(0, len(teff)):
+        plt.plot(teff[i], abs_mags[i], '.', markersize=5)
 
     legend.extend(["5281825062636445696", "5213358473574080896"])
     plt.title("Age: 10^%f (%s) years" % (age, str(int(10**age))))
     plt.legend(legend)
     plt.gca().invert_xaxis()
     plt.gca().invert_yaxis()
-    plt.savefig("%d_%s.png" % (file_index,str(age)))
+    plt.savefig(utils_path.append(output_dir, "%d_%s.png" % (file_index,str(age))))
     file_index = file_index + 1
