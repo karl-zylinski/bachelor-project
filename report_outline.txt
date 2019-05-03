@@ -1,0 +1,24 @@
+# Introduction
+- Spectroscopy: Info about atmosphere, nothing about the inside
+- Something about how spectropscopy works? (Kartunnen)
+- Atmospheres have been assuemed rep. of PCs (Witt)
+- But there has been discussions about effects of atomic diffusion for a century (Chapman)
+- Diffusion introduces errors, which make us make incorrect statements of past ISM. It is important that we find these errors since we will otherwise have a hard time doing a) chemical tagging and b) galactic archaeology, more specficially mapping the interstellar medium (ISM) (Dotter 2017)
+- A method: Compare two stars where one is affected by atomic diffusion and the other isn't. Prefer old, metal poor stars as these should be affected more by the diffusion.
+    * Korn has observed stars in globular clusters, compared them and found such errors.
+    * In this project we attempt to find stars outside of globular clusters, instead we focus on stars that move together (binaries or wide binaries, hereafter called co-moving). These are constrained to be of same origin by having similar (but not exactly equal metallicity!) and lying on the same isochrone (Dotter 2016)
+- Orgainsed as follows blabla
+
+# Theory
+- Evolution
+- Diffusion
+- Isochrones
+
+# Method
+Describe, using the diary what I did.
+
+# Results
+Wait with this
+
+# Discussion
+Wait with this

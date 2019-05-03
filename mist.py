@@ -47,7 +47,8 @@ def parse_isochrones(path):
         cur_age = age
         cur_isochrone.append(data)
         line = fh.readline()
-
+    
+    fh.close()
     return all_isochrones
 
 def save_isochrones(isos, path):
@@ -60,3 +61,35 @@ def load_isochrones(path):
     iso = pickle.load(f)
     f.close()
     return iso
+
+def parse_track(path):
+    columns = ["star_age","log_Teff","log_g","log_L","Z_surf","Bessell_U","Bessell_B","Bessell_V","Bessell_R","Bessell_I","2MASS_J","2MASS_H","2MASS_Ks","Kepler_Kp","Kepler_D51","Hipparcos_Hp","Tycho_B","Tycho_V","Gaia_G_DR2Rev","Gaia_BP_DR2Rev","Gaia_RP_DR2Rev","Gaia_G_MAW","Gaia_BP_MAWb","Gaia_BP_MAWf","Gaia_RP_MAW","TESS","phase"]
+    i_age = columns.index("star_age")
+    fh = open(path, 'r')
+    track = []
+
+    line = fh.readline()
+    while line:
+        if len(line) == 0 or _is_whitespace(line) or _is_comment(line):
+            line = fh.readline()
+            continue
+
+        track.append(list(map(lambda x: float(x), line.split())))
+        line = fh.readline()
+
+    fh.close()
+    res = {}
+    res["track"] = track
+    res["columns"] = columns
+    return res
+
+def save_track(track, path):
+    f = open(path, "wb")
+    pickle.dump(track, f)
+    f.close()
+
+def load_track(path):
+    f = open(path, "rb")
+    track = pickle.load(f)
+    f.close()
+    return track
