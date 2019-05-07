@@ -80,32 +80,18 @@ combined["groups"] = []
 
 for g in cg["groups"]:
     new_group_stars = []
-    contains_match = False
 
     for s in g["stars"]:
         sid = s[i_source_id]
         galah_matches = galah_data.get(sid)
 
-        if galah_matches != None:
-            contains_match = True
-            break
+        if galah_matches == None:
+            continue
 
-    if contains_match:
-        for s in g["stars"]:
-            sid = s[i_source_id]
-            galah_matches = galah_data.get(sid)
-
-            if galah_matches == None:
-                data = list(s)
-                none_data = [None] * (len(galah_cols) - 1) # we do not keep gaia id from galah cols
-                data.extend(none_data)
-                new_group_stars.append(data)
-                continue
-
-            for galah_match in galah_matches:
-                data = list(s)
-                data.extend(galah_match[1:])
-                new_group_stars.append(data)
+        for galah_match in galah_matches:
+            data = list(s)
+            data.extend(galah_match[1:])
+            new_group_stars.append(data)
 
     if len(new_group_stars) == 0:
         continue
@@ -119,3 +105,4 @@ for g in cg["groups"]:
 combined["columns"].extend(galah_cols[1:])
 combined["columns_datatypes"].extend(galah_cols_data_types[1:])
 utils_dict.write(combined, output_filename)
+
