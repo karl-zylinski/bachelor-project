@@ -50,8 +50,8 @@ for g in cg["groups"]:
         G = mag - 5*numpy.log10(dist) + 5 - ext
         plt.plot(teff, G, '.', markersize=get_size(feh), color=get_color(feh), zorder = 10-feh)
 
-plt.xlabel('log T_eff')
-plt.ylabel('Gaia G magnitude')
+plt.xlabel('log $T_{eff}$')
+plt.ylabel('Gaia G absolute magnitude')
 
 iso_path = "isochrones/feh-2.0.iso"
 isos_by_age = mist.load_isochrones(iso_path)

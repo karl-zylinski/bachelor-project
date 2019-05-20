@@ -88,8 +88,8 @@ for iba in isos_by_age:
             iso_gaia_G.append(d[iso_index_gaia_G])
 
         plt.plot(iso_lteff, iso_gaia_G)
-        plt.xlabel('log T_eff')
-        plt.ylabel('gaia G')
+        plt.xlabel('log $T_{eff}$')
+        plt.ylabel('Gaia G absolute magnitude')
         legend.append(str(metallicity))
 
     for i in range(0, len(teff)):

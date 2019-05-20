@@ -41,6 +41,6 @@ for metallicty, isos_by_age in isos.items():
 plt.xlabel('log T_eff')
 plt.ylabel('log L/L_sun')
 plt.axis([3.92, 3.46, -3.15, 1.58])
-plt.legend(["Fe/H 0", "Fe/H -1", "Fe/H -1", "Fe/H -2", "Fe/H -3", "Fe/H -4"])
+plt.legend(["[Fe/H] = 0", "[Fe/H] = -1", "[Fe/H] = -1", "[Fe/H] = -2", "[Fe/H] = -3", "[Fe/H] = -4"])
 #plt.show()
 plt.savefig("plots/iso_example.eps",bbox_inches='tight',pad_inches=0.0)
